@@ -1,0 +1,37 @@
+entity Organisation {
+  id Number @id
+  name String
+  memberships Member[]
+}
+
+entity Member {
+  organisation Organisation { id }
+  user User { id }
+  role MemberRole
+
+  @@id(organisation.id, user.id)
+  @@index(user.id, organisation.id)
+}
+
+enum MemberRole {
+  Admin
+  SalesRep
+  User
+}
+
+entity User {
+  id Number @id
+  memberships Member[]
+}
+
+entity Session {
+  id Number
+}
+
+entity Project {
+  id Number
+}
+
+entity Quote {
+  id Number
+}

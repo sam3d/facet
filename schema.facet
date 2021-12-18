@@ -1,9 +1,0 @@
-entity Organisation {}
-
-entity User {}
-
-entity Session {}
-
-entity Project {}
-
-entity Quote {}
