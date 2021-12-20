@@ -35,3 +35,37 @@ entity Project {
 entity Quote {
   id Number
 }
+
+Assume all entities are in their own partition (i.e. sessions, by default, are a
+not an item collection on user). Only put them in an item collection if there is
+a list type referencing that item specified on an entity. Don't overuse item
+collections if you don't need to retrieve heterogeneous items in a single query.
+
+// No item partition
+
+entity User {
+  id number
+  name string
+  email string
+}
+
+entity Session {
+  id number
+  user User { id }
+}
+
+
+// With item partition
+
+entity User {
+  id number
+  name string
+  email string
+
+  sessions Session[]
+}
+
+entity Session {
+  id number
+  user User { id }
+}
