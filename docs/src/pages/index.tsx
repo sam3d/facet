@@ -4,15 +4,15 @@ import Link from "next/link";
 
 const IndexPage: NextPage = () => {
   return (
-    <div className="fixed inset-0 flex bg-gray-100 overflow-auto">
+    <div className="flex overflow-auto fixed inset-0 text-gray-900 bg-gray-100">
       <Head>
         <title>facet</title>
       </Head>
 
-      <div className="m-auto p-8 max-w-3xl text-gray-700 text-lg">
-        <p className="text-5xl font-semibold text-gray-900 flex items-center">
+      <div className="p-8 m-auto max-w-3xl text-lg">
+        <p className="flex items-center text-5xl font-semibold">
           <span>facet</span>
-          <span className="text-sm ml-4 bg-gray-900 text-white rounded uppercase px-3 py-1">
+          <span className="py-1 px-3 ml-4 text-sm text-gray-100 uppercase bg-gray-900 rounded">
             alpha
           </span>
         </p>
@@ -36,14 +36,14 @@ const IndexPage: NextPage = () => {
         </p>
 
         <Link href="/play">
-          <a className="inline-flex items-center mt-8 group">
+          <a className="group inline-flex items-center mt-8 text-gray-500">
             <p>&rarr;</p>
 
             <div className="ml-4">
-              <p className="group-hover:underline font-medium text-blue-600">
+              <p className="font-medium text-blue-600 group-hover:underline">
                 Play with facet
               </p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm">
                 Experimental schema editor with visualisations
               </p>
             </div>
