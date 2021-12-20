@@ -1,4 +1,5 @@
 import { NextPage } from "next";
+import Link from "next/link";
 
 const IndexPage: NextPage = () => {
   return (
@@ -28,6 +29,21 @@ const IndexPage: NextPage = () => {
           Please bear with us as we take this from an RFC into a fully fledged
           suite of developer tooling.
         </p>
+
+        <Link href="/play">
+          <a className="inline-flex items-center mt-8 group">
+            <p>&rarr;</p>
+
+            <div className="ml-4">
+              <p className="group-hover:underline font-medium text-blue-600">
+                Play with facet
+              </p>
+              <p className="text-sm text-gray-500">
+                Experimental schema editor with visualisations
+              </p>
+            </div>
+          </a>
+        </Link>
       </div>
     </div>
   );
