@@ -1,9 +1,14 @@
 import { NextPage } from "next";
+import Head from "next/head";
 import Link from "next/link";
 
 const IndexPage: NextPage = () => {
   return (
     <div className="fixed inset-0 flex bg-gray-100 overflow-auto">
+      <Head>
+        <title>facet</title>
+      </Head>
+
       <div className="m-auto p-8 max-w-3xl text-gray-700 text-lg">
         <p className="text-5xl font-semibold text-gray-900 flex items-center">
           <span>facet</span>
