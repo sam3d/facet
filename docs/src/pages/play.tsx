@@ -1,19 +1,47 @@
 import Editor from "@monaco-editor/react";
 import { NextPage } from "next";
 import Link from "next/link";
+import { useState } from "react";
 import { exampleSchema } from "utils/facet/example";
 
 const PlayPage: NextPage = () => {
+  const [rawSchema, setRawSchema] = useState(exampleSchema);
+
   return (
     <div className="flex fixed inset-0 flex-col bg-gray-900">
       <Navbar />
 
-      <div className="grid flex-1 grid-cols-3">
+      <div className="grid flex-1 grid-cols-2">
         <div>
-          <Editor defaultValue={exampleSchema} />
+          <Editor
+            value={rawSchema}
+            onChange={(value) => setRawSchema(value ?? "")}
+            theme="facet"
+            options={{ fontSize: 14 }}
+            beforeMount={(monaco) => {
+              monaco.editor.defineTheme("facet", {
+                base: "vs-dark",
+                inherit: true,
+                rules: [
+                  { token: "", foreground: "#f3f4f6", background: "#111827" },
+                ],
+                colors: {
+                  "editor.background": "#111827",
+                  "editorCursor.foreground": "#fde047",
+                  "editor.lineHighlightBackground": "#FFFFFF11",
+                  "editor.selectionBackground": "#FFFFFF22",
+                  "editorLineNumber.foreground": "#374151",
+                  "editorIndentGuide.background": "#374151",
+                  "editorLineNumber.activeForeground": "#6b7280",
+                  "editorIndentGuide.activeBackground": "#6b7280",
+                  "scrollbar.shadow": "#00000077",
+                },
+              });
+            }}
+          />
         </div>
 
-        <div className="col-span-2 bg-gray-800"></div>
+        <div className="bg-gray-800"></div>
       </div>
     </div>
   );
