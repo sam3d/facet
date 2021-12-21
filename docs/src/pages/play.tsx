@@ -41,27 +41,7 @@ const PlayPage: NextPage = () => {
           />
         </div>
 
-        <div className="overflow-auto p-4 bg-gray-800">
-          <div className="p-4 text-gray-300 bg-gray-900 rounded">
-            <p className="text-lg font-medium text-center text-gray-400">
-              Schema design recommendations / thoughts
-            </p>
-
-            <div className="pl-3 mt-3 border-l border-gray-500">
-              <p>Don&apos;t overuse item collections</p>
-
-              <p className="text-sm text-gray-400">
-                Item collections are when you place multiple different entity
-                types in the same partition key. This is so you can retrieve
-                both sides of the one-to-many relationship at once. This is a
-                powerful and common pattern, but generally not necessary (and
-                also there are limited options for modelling this relational
-                strategy in DynamoDB). Item collections are only created when
-                the parent entity specifies a child array in the schema.
-              </p>
-            </div>
-          </div>
-        </div>
+        <div className="overflow-auto bg-gray-800"></div>
       </div>
     </div>
   );
