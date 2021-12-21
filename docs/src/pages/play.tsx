@@ -1,18 +1,19 @@
 import Editor from "@monaco-editor/react";
 import { NextPage } from "next";
 import Link from "next/link";
+import { exampleSchema } from "utils/facet/example";
 
 const PlayPage: NextPage = () => {
   return (
     <div className="flex fixed inset-0 flex-col bg-gray-900">
       <Navbar />
 
-      <div className="flex flex-1">
-        <div className="flex-1">
-          <Editor />
+      <div className="grid flex-1 grid-cols-3">
+        <div>
+          <Editor defaultValue={exampleSchema} />
         </div>
 
-        <div className="flex-1"></div>
+        <div className="col-span-2 bg-gray-800"></div>
       </div>
     </div>
   );
