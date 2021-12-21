@@ -17,6 +17,7 @@ const PlayPage: NextPage = () => {
             value={rawSchema}
             onChange={(value) => setRawSchema(value ?? "")}
             theme="facet"
+            loading={null}
             options={{ fontSize: 14 }}
             beforeMount={(monaco) => {
               monaco.editor.defineTheme("facet", {
