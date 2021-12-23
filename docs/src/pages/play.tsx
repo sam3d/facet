@@ -17,14 +17,30 @@ const PlayPage: NextPage = () => {
             value={rawSchema}
             onChange={(value) => setRawSchema(value ?? "")}
             theme="facet"
-            loading={null}
+            loading={<div></div>}
             options={{ fontSize: 14 }}
+            language="facet"
             beforeMount={(monaco) => {
+              monaco.languages.register({ id: "facet" });
+
+              monaco.languages.setMonarchTokensProvider("facet", {
+                tokenizer: {
+                  root: [
+                    [
+                      /(^)(entity|enum)(\s+)([a-zA-Z0-9_]*)(\s+)({)/,
+                      ["", "declaration", "", "type", "", ""],
+                    ],
+                  ],
+                },
+              });
+
               monaco.editor.defineTheme("facet", {
                 base: "vs-dark",
                 inherit: true,
                 rules: [
-                  { token: "", foreground: "#f3f4f6", background: "#111827" },
+                  { token: "", foreground: "#cbd5e1", background: "#111827" },
+                  { token: "declaration", foreground: "#d8b4fe" },
+                  { token: "type", foreground: "#fde047" },
                 ],
                 colors: {
                   "editor.background": "#111827",
