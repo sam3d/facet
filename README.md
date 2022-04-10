@@ -37,3 +37,65 @@ A flexible single table design ORM for DynamoDB
 | Pagination                                                 | Misc         | ⏰ Planned |       |
 | Singleton items                                            | Misc         | ⏰ Planned |       |
 | Reference counts                                           | Misc         | ⏰ Planned |       |
+
+### Denormalisation by using a complex attribute
+
+### Denormalisation by duplicating data
+
+### Composite primary key + the Query API action
+
+### Secondary index + the Query API action
+
+### Composite sort keys with hierarchical data
+
+### Shallow duplication
+
+### Adjacency list
+
+### Materialized graph
+
+### Normalization & multiple requests
+
+### Filtering with the partition key
+
+### Filtering with the sort key
+
+### Composite sort key
+
+### Sparse indexes
+
+### Filter expressions
+
+### Client-side filtering
+
+### Sorting on changing attributes
+
+### Ascending vs. descending
+
+### Two relational access patterns in a single item collection
+
+### Zero-padding with numbers
+
+### Faking ascending order
+
+### Adding new attributes to an existing entity
+
+### Adding a new entity without relations
+
+### Adding a new entity type into an existing item collection
+
+### Adding a new entity type into a new item collection
+
+### Joining existing items into a new item collection
+
+### Using parallel scans
+
+### Ensuring uniqueness on two or more attributes
+
+### Handling sequential IDs
+
+### Pagination
+
+### Singleton items
+
+### Reference counts
