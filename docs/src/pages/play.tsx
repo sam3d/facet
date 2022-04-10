@@ -26,6 +26,7 @@ const PlayPage: NextPage = () => {
               monaco.languages.setMonarchTokensProvider("facet", {
                 tokenizer: {
                   root: [
+                    [/\/\/.*/, "comment"],
                     [
                       /(^)(entity|enum)(\s+)([a-zA-Z0-9_]*)(\s+)({)/,
                       ["", "declaration", "", "type", "", ""],
@@ -41,6 +42,7 @@ const PlayPage: NextPage = () => {
                   { token: "", foreground: "#cbd5e1", background: "#111827" },
                   { token: "declaration", foreground: "#d8b4fe" },
                   { token: "type", foreground: "#fde047" },
+                  { token: "comment", foreground: "#4b5563" },
                 ],
                 colors: {
                   "editor.background": "#111827",
