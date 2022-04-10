@@ -48,6 +48,63 @@ A flexible single table design ORM for DynamoDB
 
 ### Composite sort keys with hierarchical data
 
+#### Example: Stores
+
+```
+entity Store {
+  id Number
+  organisation Organisation { id }
+
+  country String
+  state String
+  city String
+
+  @@id(organisation.id, id)
+  @@index((), (country, state, city))
+}
+```
+
+> The `()` at the beginning of index is used to indicate that there is no significant partition key, and that the uniqueness of the store is decided by the location at the sort key on the primary table.
+
+- Primary table
+  - CRUD a store by `organisation ID` and `store ID`
+  - Get all stores by `organisation ID`
+- GSI1
+  - Get all stores by `country`
+  - Get all stores by `country` and `state`
+  - Get all stores by `country` and `state` and `city`
+
+#### Example: Products
+
+```
+entity Product {
+  id Number
+  organisation Organisation { id }
+
+  @@id(organisation.id, id)
+}
+
+entity SolarPanel {
+  id Number
+}
+
+entity Inverter {
+  id Number
+}
+
+entity StringInverter {
+  id Number
+}
+
+entity MicroInverter {
+  id Number
+}
+```
+
+- Primary table
+  - CRUD a product by `organisation ID` and `product ID`
+  - Get all products by `organisation ID`
+
 ### Shallow duplication
 
 ### Adjacency list
