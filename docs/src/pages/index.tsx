@@ -35,19 +35,20 @@ const IndexPage: NextPage = () => {
           suite of developer tooling.
         </p>
 
-        <Link href="/play">
-          <a className="group inline-flex items-center mt-8 text-gray-500">
-            <p>&rarr;</p>
+        <Link
+          href="/play"
+          className="group inline-flex items-center mt-8 text-gray-500"
+        >
+          <p>&rarr;</p>
 
-            <div className="ml-4">
-              <p className="font-medium text-blue-600 group-hover:underline">
-                Play with facet
-              </p>
-              <p className="text-sm">
-                Experimental schema editor with visualisations
-              </p>
-            </div>
-          </a>
+          <div className="ml-4">
+            <p className="font-medium text-blue-600 group-hover:underline">
+              Play with facet
+            </p>
+            <p className="text-sm">
+              Experimental schema editor with visualisations
+            </p>
+          </div>
         </Link>
       </div>
     </div>

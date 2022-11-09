@@ -72,8 +72,8 @@ function Navbar() {
   return (
     <div className="p-4 text-gray-100">
       <div className="flex items-center">
-        <Link href="/">
-          <a className="text-gray-500 hover:text-gray-300">&larr;</a>
+        <Link href="/" className="text-gray-500 hover:text-gray-300">
+          &larr;
         </Link>
 
         <p className="ml-2 text-xl font-medium">facet</p>
