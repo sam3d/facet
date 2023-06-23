@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "scripts": {
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,css,md,json,yaml}\""
+  },
+  "dependencies": {
+    "prettier": "3.0.0",
+    "prettier-plugin-organize-imports": "3.2.2"
+  }
+}

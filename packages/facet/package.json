@@ -1,0 +1,13 @@
+{
+  "name": "facet",
+  "version": "0.1.0",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "3.363.0",
+    "@aws-sdk/lib-dynamodb": "3.365.0",
+    "tsx": "3.12.7"
+  },
+  "devDependencies": {
+    "@types/node": "20.4.0",
+    "typescript": "5.1.6"
+  }
+}
