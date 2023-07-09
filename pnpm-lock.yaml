@@ -17,6 +17,12 @@ importers:
 
   examples/next:
     dependencies:
+      '@aws-sdk/client-dynamodb':
+        specifier: 3.363.0
+        version: 3.363.0
+      '@aws-sdk/lib-dynamodb':
+        specifier: 3.365.0
+        version: 3.365.0(@aws-sdk/client-dynamodb@3.363.0)(@aws-sdk/types@3.357.0)
       '@types/node':
         specifier: 20.4.0
         version: 20.4.0
@@ -29,6 +35,9 @@ importers:
       autoprefixer:
         specifier: 10.4.14
         version: 10.4.14(postcss@8.4.25)
+      electrodb:
+        specifier: 2.7.1
+        version: 2.7.1(@aws-sdk/client-dynamodb@3.363.0)(@aws-sdk/types@3.357.0)
       eslint:
         specifier: 8.44.0
         version: 8.44.0
@@ -38,6 +47,9 @@ importers:
       facet:
         specifier: workspace:*
         version: link:../../packages/facet
+      immer:
+        specifier: 10.0.2
+        version: 10.0.2
       next:
         specifier: 13.4.9
         version: 13.4.9(react-dom@18.2.0)(react@18.2.0)
@@ -53,6 +65,9 @@ importers:
       tailwindcss:
         specifier: 3.3.2
         version: 3.3.2
+      tsx:
+        specifier: 3.12.7
+        version: 3.12.7
       typescript:
         specifier: 5.1.6
         version: 5.1.6
@@ -169,9 +184,9 @@ packages:
       '@smithy/middleware-stack': 1.0.2
       '@smithy/node-config-provider': 1.0.2
       '@smithy/node-http-handler': 1.0.3
-      '@smithy/protocol-http': 1.1.0
+      '@smithy/protocol-http': 1.1.1
       '@smithy/smithy-client': 1.0.4
-      '@smithy/types': 1.1.0
+      '@smithy/types': 1.1.1
       '@smithy/url-parser': 1.0.2
       '@smithy/util-base64': 1.0.2
       '@smithy/util-body-length-browser': 1.0.2
@@ -297,9 +312,9 @@ packages:
       '@smithy/middleware-stack': 1.0.2
       '@smithy/node-config-provider': 1.0.2
       '@smithy/node-http-handler': 1.0.3
-      '@smithy/protocol-http': 1.1.0
+      '@smithy/protocol-http': 1.1.1
       '@smithy/smithy-client': 1.0.4
-      '@smithy/types': 1.1.0
+      '@smithy/types': 1.1.1
       '@smithy/url-parser': 1.0.2
       '@smithy/util-base64': 1.0.2
       '@smithy/util-body-length-browser': 1.0.2
@@ -355,7 +370,7 @@ packages:
       '@smithy/credential-provider-imds': 1.0.2
       '@smithy/property-provider': 1.0.2
       '@smithy/shared-ini-file-loader': 1.0.2
-      '@smithy/types': 1.1.0
+      '@smithy/types': 1.1.1
       tslib: 2.5.3
     transitivePeerDependencies:
       - aws-crt
@@ -424,8 +439,8 @@ packages:
     dependencies:
       '@aws-sdk/endpoint-cache': 3.310.0
       '@aws-sdk/types': 3.357.0
-      '@smithy/protocol-http': 1.1.0
-      '@smithy/types': 1.1.0
+      '@smithy/protocol-http': 1.1.1
+      '@smithy/types': 1.1.1
       tslib: 2.5.3
     dev: false
 
@@ -434,8 +449,8 @@ packages:
     engines: {node: '>=14.0.0'}
     dependencies:
       '@aws-sdk/types': 3.357.0
-      '@smithy/protocol-http': 1.1.0
-      '@smithy/types': 1.1.0
+      '@smithy/protocol-http': 1.1.1
+      '@smithy/types': 1.1.1
       tslib: 2.5.3
     dev: false
 
@@ -444,7 +459,7 @@ packages:
     engines: {node: '>=14.0.0'}
     dependencies:
       '@aws-sdk/types': 3.357.0
-      '@smithy/types': 1.1.0
+      '@smithy/types': 1.1.1
       tslib: 2.5.3
     dev: false
 
@@ -453,8 +468,8 @@ packages:
     engines: {node: '>=14.0.0'}
     dependencies:
       '@aws-sdk/types': 3.357.0
-      '@smithy/protocol-http': 1.1.0
-      '@smithy/types': 1.1.0
+      '@smithy/protocol-http': 1.1.1
+      '@smithy/types': 1.1.1
       tslib: 2.5.3
     dev: false
 
@@ -474,9 +489,9 @@ packages:
     dependencies:
       '@aws-sdk/types': 3.357.0
       '@smithy/property-provider': 1.0.2
-      '@smithy/protocol-http': 1.1.0
+      '@smithy/protocol-http': 1.1.1
       '@smithy/signature-v4': 1.0.2
-      '@smithy/types': 1.1.0
+      '@smithy/types': 1.1.1
       '@smithy/util-middleware': 1.0.2
       tslib: 2.5.3
     dev: false
@@ -487,8 +502,8 @@ packages:
     dependencies:
       '@aws-sdk/types': 3.357.0
       '@aws-sdk/util-endpoints': 3.357.0
-      '@smithy/protocol-http': 1.1.0
-      '@smithy/types': 1.1.0
+      '@smithy/protocol-http': 1.1.1
+      '@smithy/types': 1.1.1
       tslib: 2.5.3
     dev: false
 
@@ -539,7 +554,7 @@ packages:
     resolution: {integrity: sha512-fk9ymBUIYbxiGm99Cn+kAAXmvMCWTf/cHAcB79oCXV4ELXdPa9lN5xQhZRFNxLUeXG4OAMEuCAUUuZEj8Fnc1Q==}
     dependencies:
       '@aws-sdk/types': 3.357.0
-      '@smithy/types': 1.1.0
+      '@smithy/types': 1.1.1
       bowser: 2.11.0
       tslib: 2.5.3
     dev: false
@@ -555,7 +570,7 @@ packages:
     dependencies:
       '@aws-sdk/types': 3.357.0
       '@smithy/node-config-provider': 1.0.2
-      '@smithy/types': 1.1.0
+      '@smithy/types': 1.1.1
       tslib: 2.5.3
     dev: false
 
@@ -1159,14 +1174,6 @@ packages:
       tslib: 2.5.3
     dev: false
 
-  /@smithy/protocol-http@1.1.0:
-    resolution: {integrity: sha512-H5y/kZOqfJSqRkwtcAoVbqONmhdXwSgYNJ1Glk5Ry8qlhVVy5qUzD9EklaCH8/XLnoCsLO/F/Giee8MIvaBRkg==}
-    engines: {node: '>=14.0.0'}
-    dependencies:
-      '@smithy/types': 1.1.1
-      tslib: 2.5.3
-    dev: false
-
   /@smithy/protocol-http@1.1.1:
     resolution: {integrity: sha512-mFLFa2sSvlUxm55U7B4YCIsJJIMkA6lHxwwqOaBkral1qxFz97rGffP/mmd4JDuin1EnygiO5eNJGgudiUgmDQ==}
     engines: {node: '>=14.0.0'}
@@ -1226,13 +1233,6 @@ packages:
       '@smithy/middleware-stack': 1.0.2
       '@smithy/types': 1.1.1
       '@smithy/util-stream': 1.0.2
-      tslib: 2.5.3
-    dev: false
-
-  /@smithy/types@1.1.0:
-    resolution: {integrity: sha512-KzmvisMmuwD2jZXuC9e65JrgsZM97y5NpDU7g347oB+Q+xQLU6hQZ5zFNNbEfwwOJHoOvEVTna+dk1h/lW7alw==}
-    engines: {node: '>=14.0.0'}
-    dependencies:
       tslib: 2.5.3
     dev: false
 
@@ -1865,6 +1865,16 @@ packages:
     engines: {node: '>=6.0.0'}
     dependencies:
       esutils: 2.0.3
+    dev: false
+
+  /electrodb@2.7.1(@aws-sdk/client-dynamodb@3.363.0)(@aws-sdk/types@3.357.0):
+    resolution: {integrity: sha512-nY4jUFZ1DQMX1Coq8nKaIQjxrJ1/rvyN3VM5nXDJXPCFutyY7+XEKXnBFXNVSFWLh3bzpoyC6AEgaGNxh/S9lQ==}
+    dependencies:
+      '@aws-sdk/lib-dynamodb': 3.365.0(@aws-sdk/client-dynamodb@3.363.0)(@aws-sdk/types@3.357.0)
+      jsonschema: 1.2.7
+    transitivePeerDependencies:
+      - '@aws-sdk/client-dynamodb'
+      - '@aws-sdk/types'
     dev: false
 
   /electron-to-chromium@1.4.445:
@@ -2585,6 +2595,10 @@ packages:
     engines: {node: '>= 4'}
     dev: false
 
+  /immer@10.0.2:
+    resolution: {integrity: sha512-Rx3CqeqQ19sxUtYV9CU911Vhy8/721wRFnJv3REVGWUmoAcIwzifTsdmJte/MV+0/XpM35LZdQMBGkRIoLPwQA==}
+    dev: false
+
   /import-fresh@3.3.0:
     resolution: {integrity: sha512-veYYhQa+D1QBKznvhUHxb8faxlrwUnxseDAbAp457E0wLNio2bOSKnjYDhMj+YiAq61xrMGhQk9iXVk5FzgQMw==}
     engines: {node: '>=6'}
@@ -2814,6 +2828,10 @@ packages:
     hasBin: true
     dependencies:
       minimist: 1.2.8
+    dev: false
+
+  /jsonschema@1.2.7:
+    resolution: {integrity: sha512-3dFMg9hmI9LdHag/BRIhMefCfbq1hicvYMy8YhZQorAdzOzWz7NjniSpn39yjpzUAMIWtGyyZuH2KNBloH7ZLw==}
     dev: false
 
   /jsx-ast-utils@3.3.4:
