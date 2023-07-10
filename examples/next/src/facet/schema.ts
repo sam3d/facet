@@ -1,17 +1,20 @@
-import { createTable } from "facet";
+import { createTable, f } from "facet";
 
 const table = createTable({
   name: "Facet",
 });
 
 export const organizations = table.entity({
-  schema: {},
+  schema: {
+    id: f.number(),
+    name: f.string(),
+  },
 });
 
 export const users = table.entity({
-  schema: {},
-});
-
-export const projects = table.entity({
-  schema: {},
+  schema: {
+    id: f.number(),
+    name: f.string(),
+    email: f.string(),
+  },
 });
