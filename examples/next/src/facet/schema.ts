@@ -15,12 +15,3 @@ export const users = table.entity({
 export const projects = table.entity({
   schema: {},
 });
-
-export const organizationsCollection = table.collection({
-  entities: { organizations, users, projects },
-  mappings: {
-    organizations: null,
-    users: null,
-    projects: null,
-  },
-});
