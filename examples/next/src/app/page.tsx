@@ -1,4 +1,8 @@
+import { users } from "@/facet/schema";
+
 export default async function Page() {
+  users;
+
   return (
     <div>
       <form>

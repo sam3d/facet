@@ -1,3 +1,5 @@
+import { AttributeValue } from "@aws-sdk/client-dynamodb";
+
 type EntityOpts<EntitySchema> = {
   schema: EntitySchema;
 };
@@ -11,7 +13,7 @@ type TableOpts = {
 };
 
 type Table = {
-  entity: <EntitySchema extends Record<string, FacetType<any>>>(
+  entity: <EntitySchema extends Record<string, FacetAttribute>>(
     opts: EntityOpts<EntitySchema>,
   ) => Entity<EntitySchema>;
 };
@@ -26,22 +28,75 @@ export function createTable(opts: TableOpts): Table {
   };
 }
 
-abstract class FacetType<Output = any> {}
+abstract class FacetAttribute<
+  TInput = any,
+  TOutput extends AttributeValue = AttributeValue,
+> {
+  abstract serialize(input: unknown): TOutput;
+  abstract deserialize(av: TOutput): TInput;
+}
 
-class FacetNumber extends FacetType<number> {}
+class FacetString extends FacetAttribute<string, AttributeValue.SMember> {
+  serialize(input: unknown) {
+    if (typeof input !== "string") throw new TypeError();
+    return { S: input };
+  }
+  deserialize(av: AttributeValue) {
+    if (av.S === undefined) throw new TypeError();
+    return av.S;
+  }
+}
 
-class FacetString extends FacetType<string> {}
+class FacetNumber extends FacetAttribute<number, AttributeValue.NMember> {
+  serialize(input: unknown) {
+    if (typeof input !== "number") throw new TypeError();
+    return { N: input.toString() };
+  }
+  deserialize(av: AttributeValue) {
+    if (av.N === undefined) throw new TypeError();
+    return parseFloat(av.N);
+  }
+}
 
-class FacetBoolean extends FacetType<boolean> {}
+class FacetMap<T extends Record<string, FacetAttribute>> extends FacetAttribute<
+  Record<string, any>,
+  AttributeValue.MMember
+> {
+  private shape: T;
 
-class FacetBinary extends FacetType<Uint8Array> {}
+  constructor(shape: T) {
+    super();
+    this.shape = shape;
+  }
 
-class FacetNull extends FacetType<null> {}
+  serialize(input: unknown) {
+    if (!input || typeof input !== "object") throw new TypeError();
+
+    return {
+      M: Object.entries(this.shape).reduce((acc, [key, attr]) => {
+        return {
+          ...acc,
+          [key]: attr.serialize((input as { [key: string]: unknown })[key]),
+        };
+      }, {}),
+    };
+  }
+
+  deserialize(av: AttributeValue) {
+    if (av.M === undefined) throw new TypeError();
+
+    return Object.entries(this.shape).reduce((acc, [key, attr]) => {
+      const subAv = av.M[key];
+      if (!subAv) return acc;
+      return { ...acc, [key]: attr.deserialize(subAv) };
+    }, {});
+  }
+}
 
 export const f = {
-  number: () => new FacetNumber(),
   string: () => new FacetString(),
-  boolean: () => new FacetBoolean(),
-  binary: () => new FacetBinary(),
-  null: () => new FacetNull(),
+  number: () => new FacetNumber(),
+
+  map: <T extends Record<string, FacetAttribute>>(shape: T) =>
+    new FacetMap(shape),
 };
