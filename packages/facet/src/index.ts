@@ -6,7 +6,10 @@ import {
 
 const client = new DynamoDB({
   region: "eu-west-2",
-  credentials: {},
+  credentials: {
+    accessKeyId: process.env["AWS_ACCESS_KEY_ID"] ?? "",
+    secretAccessKey: process.env["AWS_SECRET_ACCESS_KEY"] ?? "",
+  },
 });
 
 class Table {
@@ -16,12 +19,14 @@ class Table {
     this.name = name;
   }
 
-  entity<T extends FacetAttributes>(opts: { schema: T }): Entity<T> {
+  entity<T extends Record<string, FacetAttribute>>(opts: {
+    schema: T;
+  }): Entity<T> {
     return new Entity(opts.schema, { name: this.name });
   }
 }
 
-class Entity<T extends FacetAttributes> {
+class Entity<T extends Record<string, FacetAttribute>> {
   private schema: T;
   private tableName: string;
 
@@ -69,13 +74,12 @@ export function createTable(opts: { name: string }): Table {
   return new Table(opts.name);
 }
 
-type FacetAttributes = Record<string, FacetAttribute>;
-
 abstract class FacetAttribute<
   TInput = any,
   TOutput extends AttributeValue = AttributeValue,
 > {
-  declare _: { input: TInput; output: TOutput };
+  declare _input: TInput;
+  declare _output: TOutput;
 
   abstract serialize(input: unknown): TOutput;
   abstract deserialize(av: TOutput): TInput;
@@ -125,22 +129,22 @@ class FacetBoolean extends FacetAttribute<boolean, AttributeValue.BOOLMember> {
   }
 }
 
-class FacetMap<T extends FacetAttributes> extends FacetAttribute<
-  InferInput<T>,
+class FacetMap<T extends Record<string, FacetAttribute>> extends FacetAttribute<
+  { [K in keyof T]: T[K]["_input"] },
   AttributeValue.MMember
 > {
-  private shape: T;
+  private attributes: T;
 
-  constructor(shape: T) {
+  constructor(attributes: T) {
     super();
-    this.shape = shape;
+    this.attributes = attributes;
   }
 
   serialize(input: unknown) {
     if (!input || typeof input !== "object") throw new TypeError();
 
     return {
-      M: Object.entries(this.shape).reduce((acc, [key, attr]) => {
+      M: Object.entries(this.attributes).reduce((acc, [key, attr]) => {
         return {
           ...acc,
           [key]: attr.serialize((input as { [key: string]: unknown })[key]),
@@ -152,11 +156,33 @@ class FacetMap<T extends FacetAttributes> extends FacetAttribute<
   deserialize(av: AttributeValue) {
     if (av.M === undefined) throw new TypeError();
 
-    return Object.entries(this.shape).reduce((acc, [key, attr]) => {
+    return Object.entries(this.attributes).reduce((acc, [key, attr]) => {
       const subAv = av.M[key];
       if (!subAv) return acc;
       return { ...acc, [key]: attr.deserialize(subAv) };
     }, {} as InferInput<T>);
+  }
+}
+
+class FacetUnion<T extends FacetAttribute[]> extends FacetAttribute<
+  T[number]["_input"],
+  T[number]["_output"]
+> {
+  private attributes: T;
+
+  constructor(attributes: [...T]) {
+    super();
+    this.attributes = attributes;
+  }
+
+  serialize(input: unknown) {
+    // TODO: Implement
+    return {} as any;
+  }
+
+  deserialize(av: any) {
+    // TODO: Implement
+    return {} as any;
   }
 }
 
@@ -166,10 +192,19 @@ export const f = {
   binary: () => new FacetBinary(),
   boolean: () => new FacetBoolean(),
 
-  map: <T extends FacetAttributes>(shape: T) => new FacetMap(shape),
+  map: <T extends Record<string, FacetAttribute>>(attributes: T) =>
+    new FacetMap(attributes),
+
+  union: <T extends FacetAttribute[]>(attributes: [...T]) =>
+    new FacetUnion(attributes),
 };
 
-// NOTE: This is a conditional type for now so intellisense expands it
-type InferInput<T extends FacetAttributes> = T extends FacetAttributes
-  ? { [K in keyof T]: T[K]["_"]["input"] }
+// NOTE: This is a conditional type for now so intellisense expands it, it
+// actually doesn't gain any additional benefit over having it just be the
+// mapped type definition
+type InferInput<T extends Record<string, FacetAttribute>> = T extends Record<
+  string,
+  FacetAttribute
+>
+  ? { [K in keyof T]: T[K]["_input"] }
   : never;

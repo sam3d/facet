@@ -10,12 +10,10 @@ export const users = table.entity({
     PK: f.string(),
     SK: f.string(),
     id: f.string(),
-    org: f.map({
-      headerPic: f.binary(),
-      id: f.string(),
-      isAdmin: f.boolean(),
-      userCount: f.number(),
-    }),
+    rateLimitCount: f.number(),
+    isAdmin: f.boolean(),
+
+    type: f.union([f.string(), f.map({ name: f.string() })]),
   },
 });
 
@@ -26,13 +24,11 @@ export const users = table.entity({
     PK: `$user#id_${id.string}`,
     SK: `$user`,
     id: id.string,
-    org: {
-      headerPic: new Uint8Array([0x12]),
-      id: id.string,
-      isAdmin: false,
-      userCount: 2,
-    },
+    rateLimitCount: 20,
+    isAdmin: false,
+    type: "Sam",
   });
+
   console.log(res);
 
   const found = await users.get(`$user#id_${id.string}`, `$user`);
