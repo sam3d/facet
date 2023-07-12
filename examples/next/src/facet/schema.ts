@@ -30,7 +30,7 @@ export const users = table.entity({
       headerPic: new Uint8Array([0x12]),
       id: id.string,
       isAdmin: false,
-      userCount: Math.random(),
+      userCount: 2,
     },
   });
   console.log(res);

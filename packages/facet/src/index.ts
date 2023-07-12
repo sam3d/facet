@@ -30,7 +30,10 @@ class Entity<T extends FacetAttributes> {
     this.tableName = table.name;
   }
 
-  async get(PK: string, SK: string): Promise<CreateEntityInput<T> | null> {
+  async get(
+    PK: string,
+    SK: string,
+  ): Promise<{ [K in keyof T]: T[K]["_"]["input"] } | null> {
     const res = await client.getItem({
       TableName: this.tableName,
       Key: { PK: { S: PK }, SK: { S: SK } },
@@ -44,13 +47,15 @@ class Entity<T extends FacetAttributes> {
         if (!av) return acc;
         return { ...acc, [key]: attr.deserialize(av) };
       },
-      {} as CreateEntityInput<T>,
+      {} as { [K in keyof T]: T[K]["_"]["input"] },
     );
 
     return deserialized;
   }
 
-  async create(input: CreateEntityInput<T>): Promise<PutItemCommandOutput> {
+  async create(input: {
+    [K in keyof T]: T[K]["_"]["input"];
+  }): Promise<PutItemCommandOutput> {
     if (!input || typeof input !== "object") throw new TypeError();
 
     const serialized = Object.entries(this.schema).reduce(
@@ -126,7 +131,7 @@ class FacetBoolean extends FacetAttribute<boolean, AttributeValue.BOOLMember> {
 }
 
 class FacetMap<T extends FacetAttributes> extends FacetAttribute<
-  Record<string, any>,
+  { [K in keyof T]: T[K]["_"]["input"] },
   AttributeValue.MMember
 > {
   private shape: T;
@@ -152,11 +157,14 @@ class FacetMap<T extends FacetAttributes> extends FacetAttribute<
   deserialize(av: AttributeValue) {
     if (av.M === undefined) throw new TypeError();
 
-    return Object.entries(this.shape).reduce((acc, [key, attr]) => {
-      const subAv = av.M[key];
-      if (!subAv) return acc;
-      return { ...acc, [key]: attr.deserialize(subAv) };
-    }, {});
+    return Object.entries(this.shape).reduce(
+      (acc, [key, attr]) => {
+        const subAv = av.M[key];
+        if (!subAv) return acc;
+        return { ...acc, [key]: attr.deserialize(subAv) };
+      },
+      {} as { [K in keyof T]: T[K]["_"]["input"] },
+    );
   }
 }
 
@@ -167,10 +175,4 @@ export const f = {
   boolean: () => new FacetBoolean(),
 
   map: <T extends FacetAttributes>(shape: T) => new FacetMap(shape),
-};
-
-type CreateEntityInput<T extends FacetAttributes> = {
-  [K in keyof T]: T[K] extends FacetMap<infer U>
-    ? CreateEntityInput<U>
-    : T[K]["_"]["input"];
 };
