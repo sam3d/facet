@@ -1,39 +1,36 @@
-import { AttributeValue } from "@aws-sdk/client-dynamodb";
+import type { AttributeValue } from "@aws-sdk/client-dynamodb";
 
-type EntityOpts<EntitySchema> = {
-  schema: EntitySchema;
-};
+class Table {
+  private name: string;
 
-type Entity<EntitySchema> = {
-  _schema: EntitySchema;
-};
+  constructor(name: string) {
+    this.name = name;
+  }
 
-type TableOpts = {
-  name: string;
-};
-
-type Table = {
-  entity: <EntitySchema extends Record<string, FacetAttribute>>(
-    opts: EntityOpts<EntitySchema>,
-  ) => Entity<EntitySchema>;
-};
-
-export function createTable(opts: TableOpts): Table {
-  return {
-    entity(opts) {
-      return {
-        _schema: opts.schema,
-      };
-    },
-  };
+  entity<T extends FacetAttributes>(opts: { schema: T }): Entity<T> {
+    return new Entity(opts.schema);
+  }
 }
+
+class Entity<T extends FacetAttributes> {
+  private schema: T;
+
+  constructor(schema: T) {
+    this.schema = schema;
+  }
+}
+
+export function createTable(opts: { name: string }): Table {
+  return new Table(opts.name);
+}
+
+type FacetAttributes = Record<string, FacetAttribute>;
 
 abstract class FacetAttribute<
   TInput = any,
   TOutput extends AttributeValue = AttributeValue,
 > {
-  _input!: TInput;
-  _output!: TOutput;
+  declare _: { input: TInput; output: TOutput };
 
   abstract serialize(input: unknown): TOutput;
   abstract deserialize(av: TOutput): TInput;
@@ -61,7 +58,7 @@ class FacetNumber extends FacetAttribute<number, AttributeValue.NMember> {
   }
 }
 
-class FacetMap<T extends Record<string, FacetAttribute>> extends FacetAttribute<
+class FacetMap<T extends FacetAttributes> extends FacetAttribute<
   Record<string, any>,
   AttributeValue.MMember
 > {
@@ -100,12 +97,11 @@ export const f = {
   string: () => new FacetString(),
   number: () => new FacetNumber(),
 
-  map: <T extends Record<string, FacetAttribute>>(shape: T) =>
-    new FacetMap(shape),
+  map: <T extends FacetAttributes>(shape: T) => new FacetMap(shape),
 };
 
-export type CreateEntityInput<T extends Record<string, FacetAttribute>> = {
+export type CreateEntityInput<T extends FacetAttributes> = {
   [K in keyof T]: T[K] extends FacetMap<infer U>
     ? CreateEntityInput<U>
-    : T[K]["_input"];
+    : T[K]["_"]["input"];
 };

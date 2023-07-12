@@ -14,10 +14,10 @@ export const users = table.entity({
   },
 });
 
-const create: CreateEntityInput<(typeof users)["_schema"]> = {
+const create: CreateEntityInput<(typeof users)["schema"]> = {
   id: "test",
   org: {
     id: "5",
-    userCount: 20,
+    userCount: 5,
   },
 };
