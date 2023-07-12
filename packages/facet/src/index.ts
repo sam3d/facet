@@ -30,10 +30,7 @@ class Entity<T extends FacetAttributes> {
     this.tableName = table.name;
   }
 
-  async get(
-    PK: string,
-    SK: string,
-  ): Promise<{ [K in keyof T]: T[K]["_"]["input"] } | null> {
+  async get(PK: string, SK: string): Promise<InferInput<T> | null> {
     const res = await client.getItem({
       TableName: this.tableName,
       Key: { PK: { S: PK }, SK: { S: SK } },
@@ -47,15 +44,13 @@ class Entity<T extends FacetAttributes> {
         if (!av) return acc;
         return { ...acc, [key]: attr.deserialize(av) };
       },
-      {} as { [K in keyof T]: T[K]["_"]["input"] },
+      {} as InferInput<T>,
     );
 
     return deserialized;
   }
 
-  async create(input: {
-    [K in keyof T]: T[K]["_"]["input"];
-  }): Promise<PutItemCommandOutput> {
+  async create(input: InferInput<T>): Promise<PutItemCommandOutput> {
     if (!input || typeof input !== "object") throw new TypeError();
 
     const serialized = Object.entries(this.schema).reduce(
@@ -131,7 +126,7 @@ class FacetBoolean extends FacetAttribute<boolean, AttributeValue.BOOLMember> {
 }
 
 class FacetMap<T extends FacetAttributes> extends FacetAttribute<
-  { [K in keyof T]: T[K]["_"]["input"] },
+  InferInput<T>,
   AttributeValue.MMember
 > {
   private shape: T;
@@ -157,14 +152,11 @@ class FacetMap<T extends FacetAttributes> extends FacetAttribute<
   deserialize(av: AttributeValue) {
     if (av.M === undefined) throw new TypeError();
 
-    return Object.entries(this.shape).reduce(
-      (acc, [key, attr]) => {
-        const subAv = av.M[key];
-        if (!subAv) return acc;
-        return { ...acc, [key]: attr.deserialize(subAv) };
-      },
-      {} as { [K in keyof T]: T[K]["_"]["input"] },
-    );
+    return Object.entries(this.shape).reduce((acc, [key, attr]) => {
+      const subAv = av.M[key];
+      if (!subAv) return acc;
+      return { ...acc, [key]: attr.deserialize(subAv) };
+    }, {} as InferInput<T>);
   }
 }
 
@@ -176,3 +168,8 @@ export const f = {
 
   map: <T extends FacetAttributes>(shape: T) => new FacetMap(shape),
 };
+
+// NOTE: This is a conditional type for now so intellisense expands it
+type InferInput<T extends FacetAttributes> = T extends FacetAttributes
+  ? { [K in keyof T]: T[K]["_"]["input"] }
+  : never;
