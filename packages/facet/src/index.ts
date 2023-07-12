@@ -32,6 +32,9 @@ abstract class FacetAttribute<
   TInput = any,
   TOutput extends AttributeValue = AttributeValue,
 > {
+  _input!: TInput;
+  _output!: TOutput;
+
   abstract serialize(input: unknown): TOutput;
   abstract deserialize(av: TOutput): TInput;
 }
@@ -99,4 +102,10 @@ export const f = {
 
   map: <T extends Record<string, FacetAttribute>>(shape: T) =>
     new FacetMap(shape),
+};
+
+export type CreateEntityInput<T extends Record<string, FacetAttribute>> = {
+  [K in keyof T]: T[K] extends FacetMap<infer U>
+    ? CreateEntityInput<U>
+    : T[K]["_input"];
 };
