@@ -237,7 +237,7 @@ class FacetList<T extends AnyFacetAttribute> extends FacetAttribute<
 class FacetMap<
   T extends Record<string, AnyFacetAttribute>,
 > extends FacetAttribute<
-  InferInput<T>,
+  { [K in keyof T]: T[K]["_"]["input"] },
   AttributeValue.MMember,
   { required: true; readOnly: false; default: false }
 > {
