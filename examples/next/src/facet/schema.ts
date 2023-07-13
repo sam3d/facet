@@ -11,6 +11,8 @@ export const users = table.entity({
     SK: f.string(),
     id: f.string(),
 
+    test: f.list(f.map({ name: f.string() })).optional(),
+
     deeply: f
       .map({
         nested: f.map({
@@ -31,6 +33,8 @@ export const users = table.entity({
     PK: `$user#id_${user1Id.string}`,
     SK: `$user`,
     id: user1Id.string,
+
+    test: [{ name: "sam" }],
 
     deeply: {
       nested: {

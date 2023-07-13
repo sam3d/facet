@@ -385,7 +385,15 @@ export const f = {
   boolean: () => new FacetBoolean(),
 
   // Document types
-  list: <T extends AnyFacetAttribute>(attribute: T) => new FacetList(attribute),
+  list: <
+    T extends FacetAttribute<
+      any,
+      any,
+      { required: true; readOnly: false; default: false }
+    >,
+  >(
+    attribute: T,
+  ) => new FacetList(attribute),
   map: <T extends Record<string, AnyFacetAttribute>>(attributes: T) =>
     new FacetMap(attributes),
 
