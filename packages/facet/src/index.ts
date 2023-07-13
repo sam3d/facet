@@ -128,6 +128,28 @@ class FacetBoolean extends FacetAttribute<boolean, AttributeValue.BOOLMember> {
   }
 }
 
+class FacetList<T extends FacetAttribute> extends FacetAttribute<
+  T["_"]["input"][],
+  AttributeValue.LMember
+> {
+  private attribute: T;
+
+  constructor(attribute: T) {
+    super();
+    this.attribute = attribute;
+  }
+
+  serialize(input: unknown) {
+    if (!Array.isArray(input)) throw new TypeError();
+    return { L: input.map((item) => this.attribute.serialize(item)) };
+  }
+
+  deserialize(av: AttributeValue) {
+    if (av.L === undefined) throw new TypeError();
+    return av.L.map((item) => this.attribute.deserialize(item));
+  }
+}
+
 class FacetMap<T extends Record<string, FacetAttribute>> extends FacetAttribute<
   { [K in keyof T]: T[K]["_"]["input"] },
   AttributeValue.MMember
@@ -187,14 +209,18 @@ class FacetUnion<T extends FacetAttribute[]> extends FacetAttribute<
 }
 
 export const f = {
+  // Scalar types
   number: () => new FacetNumber(),
   string: () => new FacetString(),
   binary: () => new FacetBinary(),
   boolean: () => new FacetBoolean(),
 
+  // Document types
+  list: <T extends FacetAttribute>(attribute: T) => new FacetList(attribute),
   map: <T extends Record<string, FacetAttribute>>(attributes: T) =>
     new FacetMap(attributes),
 
+  // Meta types
   union: <T extends FacetAttribute[]>(attributes: [...T]) =>
     new FacetUnion(attributes),
 };

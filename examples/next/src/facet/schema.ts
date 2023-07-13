@@ -12,6 +12,14 @@ export const users = table.entity({
     id: f.string(),
     rateLimitCount: f.number(),
     isAdmin: f.boolean(),
+
+    sessions: f.list(
+      f.map({
+        id: f.string(),
+        token: f.string(),
+        isActive: f.boolean(),
+      }),
+    ),
   },
 });
 
@@ -24,6 +32,8 @@ export const users = table.entity({
     id: id.string,
     rateLimitCount: 20,
     isAdmin: false,
+
+    sessions: [{ id: "1", token: "1223123", isActive: true }],
   });
 
   console.log(res);
