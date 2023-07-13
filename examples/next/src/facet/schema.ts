@@ -10,7 +10,17 @@ export const users = table.entity({
     PK: f.string(),
     SK: f.string(),
     id: f.string(),
-    optionalProp: f.boolean().optional(),
+
+    deeply: f
+      .map({
+        nested: f.map({
+          property: f.map({
+            required: f.string(),
+            example: f.number().optional(),
+          }),
+        }),
+      })
+      .optional(),
   },
 });
 
@@ -21,6 +31,14 @@ export const users = table.entity({
     PK: `$user#id_${user1Id.string}`,
     SK: `$user`,
     id: user1Id.string,
+
+    deeply: {
+      nested: {
+        property: {
+          required: "",
+        },
+      },
+    },
   });
 
   const user2Id = await KSUID.random();
@@ -29,7 +47,6 @@ export const users = table.entity({
     PK: `$user#id_${user2Id.string}`,
     SK: `$user`,
     id: user2Id.string,
-    optionalProp: true,
   });
 
   console.log(user1);

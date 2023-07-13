@@ -19,14 +19,14 @@ class Table {
     this.name = name;
   }
 
-  entity<T extends Record<string, FacetAttribute>>(opts: {
+  entity<T extends Record<string, AnyFacetAttribute>>(opts: {
     attributes: T;
   }): Entity<T> {
     return new Entity(opts.attributes, { name: this.name });
   }
 }
 
-class Entity<T extends Record<string, FacetAttribute>> {
+class Entity<T extends Record<string, AnyFacetAttribute>> {
   private attributes: T;
   private tableName: string;
 
@@ -75,7 +75,7 @@ export function createTable(opts: { name: string }): Table {
 }
 
 type AttributeConfig = {
-  optional: boolean;
+  required: boolean;
   readOnly: boolean;
   default: boolean;
 };
@@ -85,21 +85,19 @@ type UpdateAttributeConfig<
   U extends Partial<AttributeConfig>,
 > = Omit<T, keyof U> & U;
 
+type AnyFacetAttribute = FacetAttribute<any, any, any>;
+
 abstract class FacetAttribute<
-  TInput = any,
-  TOutput extends AttributeValue = AttributeValue,
-  TConfig extends AttributeConfig = AttributeConfig,
+  TInput,
+  TOutput extends AttributeValue,
+  TConfig extends AttributeConfig,
 > {
   declare _: { input: TInput; output: TOutput; config: TConfig };
 
   private config: TConfig;
 
-  constructor() {
-    this.config = {
-      optional: false,
-      readOnly: false,
-      default: false,
-    } as TConfig;
+  constructor(config: TConfig) {
+    this.config = config;
   }
 
   abstract serialize(input: unknown): TOutput;
@@ -108,9 +106,9 @@ abstract class FacetAttribute<
   optional(): FacetAttribute<
     TInput,
     TOutput,
-    UpdateAttributeConfig<TConfig, { optional: true }>
+    UpdateAttributeConfig<TConfig, { required: false }>
   > {
-    this.config.optional = true;
+    this.config.required = false;
     return this as ReturnType<this["optional"]>;
   }
 
@@ -133,58 +131,95 @@ abstract class FacetAttribute<
   }
 }
 
-class FacetString extends FacetAttribute<string, AttributeValue.SMember> {
+class FacetString extends FacetAttribute<
+  string,
+  AttributeValue.SMember,
+  { required: true; readOnly: false; default: false }
+> {
+  constructor() {
+    super({ required: true, readOnly: false, default: false });
+  }
+
   serialize(input: unknown) {
     if (typeof input !== "string") throw new TypeError();
     return { S: input };
   }
+
   deserialize(av: AttributeValue) {
     if (av.S === undefined) throw new TypeError();
     return av.S;
   }
 }
 
-class FacetNumber extends FacetAttribute<number, AttributeValue.NMember> {
+class FacetNumber extends FacetAttribute<
+  number,
+  AttributeValue.NMember,
+  { required: true; readOnly: false; default: false }
+> {
+  constructor() {
+    super({ required: true, readOnly: false, default: false });
+  }
+
   serialize(input: unknown) {
     if (typeof input !== "number") throw new TypeError();
     return { N: input.toString() };
   }
+
   deserialize(av: AttributeValue) {
     if (av.N === undefined) throw new TypeError();
     return parseFloat(av.N);
   }
 }
 
-class FacetBinary extends FacetAttribute<Uint8Array, AttributeValue.BMember> {
+class FacetBinary extends FacetAttribute<
+  Uint8Array,
+  AttributeValue.BMember,
+  { required: true; readOnly: false; default: false }
+> {
+  constructor() {
+    super({ required: true, readOnly: false, default: false });
+  }
+
   serialize(input: unknown) {
     if (!(input instanceof Uint8Array)) throw new TypeError();
     return { B: input };
   }
+
   deserialize(av: AttributeValue) {
     if (av.B === undefined) throw new TypeError();
     return av.B;
   }
 }
 
-class FacetBoolean extends FacetAttribute<boolean, AttributeValue.BOOLMember> {
+class FacetBoolean extends FacetAttribute<
+  boolean,
+  AttributeValue.BOOLMember,
+  { required: true; readOnly: false; default: false }
+> {
+  constructor() {
+    super({ required: true, readOnly: false, default: false });
+  }
+
   serialize(input: unknown) {
     if (typeof input !== "boolean") throw new TypeError();
     return { BOOL: input };
   }
+
   deserialize(av: AttributeValue) {
     if (av.BOOL === undefined) throw new TypeError();
     return av.BOOL;
   }
 }
 
-class FacetList<T extends FacetAttribute> extends FacetAttribute<
+class FacetList<T extends AnyFacetAttribute> extends FacetAttribute<
   T["_"]["input"][],
-  AttributeValue.LMember
+  AttributeValue.LMember,
+  { required: true; readOnly: false; default: false }
 > {
   private attribute: T;
 
   constructor(attribute: T) {
-    super();
+    super({ required: true, readOnly: false, default: false });
     this.attribute = attribute;
   }
 
@@ -199,14 +234,17 @@ class FacetList<T extends FacetAttribute> extends FacetAttribute<
   }
 }
 
-class FacetMap<T extends Record<string, FacetAttribute>> extends FacetAttribute<
-  { [K in keyof T]: T[K]["_"]["input"] },
-  AttributeValue.MMember
+class FacetMap<
+  T extends Record<string, AnyFacetAttribute>,
+> extends FacetAttribute<
+  InferInput<T>,
+  AttributeValue.MMember,
+  { required: true; readOnly: false; default: false }
 > {
   private attributes: T;
 
   constructor(attributes: T) {
-    super();
+    super({ required: true, readOnly: false, default: false });
     this.attributes = attributes;
   }
 
@@ -237,8 +275,13 @@ class FacetMap<T extends Record<string, FacetAttribute>> extends FacetAttribute<
 
 class FacetStringSet extends FacetAttribute<
   Set<string>,
-  AttributeValue.SSMember
+  AttributeValue.SSMember,
+  { required: true; readOnly: false; default: false }
 > {
+  constructor() {
+    super({ required: true, readOnly: false, default: false });
+  }
+
   serialize(input: unknown) {
     if (!(input instanceof Set)) throw new TypeError();
 
@@ -259,8 +302,13 @@ class FacetStringSet extends FacetAttribute<
 
 class FacetNumberSet extends FacetAttribute<
   Set<number>,
-  AttributeValue.NSMember
+  AttributeValue.NSMember,
+  { required: true; readOnly: false; default: false }
 > {
+  constructor() {
+    super({ required: true, readOnly: false, default: false });
+  }
+
   serialize(input: unknown) {
     if (!(input instanceof Set)) throw new TypeError();
 
@@ -281,8 +329,13 @@ class FacetNumberSet extends FacetAttribute<
 
 class FacetBinarySet extends FacetAttribute<
   Set<Uint8Array>,
-  AttributeValue.BSMember
+  AttributeValue.BSMember,
+  { required: true; readOnly: false; default: false }
 > {
+  constructor() {
+    super({ required: true, readOnly: false, default: false });
+  }
+
   serialize(input: unknown) {
     if (!(input instanceof Set)) throw new TypeError();
 
@@ -301,14 +354,15 @@ class FacetBinarySet extends FacetAttribute<
   }
 }
 
-class FacetUnion<T extends FacetAttribute[]> extends FacetAttribute<
+class FacetUnion<T extends AnyFacetAttribute[]> extends FacetAttribute<
   T[number]["_"]["input"],
-  T[number]["_"]["output"]
+  T[number]["_"]["output"],
+  { required: true; readOnly: false; default: false }
 > {
   private attributes: T;
 
   constructor(attributes: [...T]) {
-    super();
+    super({ required: true, readOnly: false, default: false });
     this.attributes = attributes;
   }
 
@@ -331,8 +385,8 @@ export const f = {
   boolean: () => new FacetBoolean(),
 
   // Document types
-  list: <T extends FacetAttribute>(attribute: T) => new FacetList(attribute),
-  map: <T extends Record<string, FacetAttribute>>(attributes: T) =>
+  list: <T extends AnyFacetAttribute>(attribute: T) => new FacetList(attribute),
+  map: <T extends Record<string, AnyFacetAttribute>>(attributes: T) =>
     new FacetMap(attributes),
 
   // Set types
@@ -341,16 +395,16 @@ export const f = {
   binarySet: () => new FacetBinarySet(),
 
   // Meta types
-  union: <T extends FacetAttribute[]>(attributes: [...T]) =>
+  union: <T extends AnyFacetAttribute[]>(attributes: [...T]) =>
     new FacetUnion(attributes),
 };
 
-type InferInput<T extends Record<string, FacetAttribute>> = {
-  [K in keyof T as T[K]["_"]["config"]["optional"] extends true
+type InferInput<T extends Record<string, AnyFacetAttribute>> = {
+  [K in keyof T as T[K]["_"]["config"]["required"] extends true
+    ? K
+    : never]: T[K]["_"]["input"];
+} & {
+  [K in keyof T as T[K]["_"]["config"]["required"] extends false
     ? K
     : never]?: T[K]["_"]["input"];
-} & {
-  [K in keyof T as T[K]["_"]["config"]["optional"] extends true
-    ? never
-    : K]: T[K]["_"]["input"];
 };
