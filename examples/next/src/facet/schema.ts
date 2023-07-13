@@ -10,46 +10,30 @@ export const users = table.entity({
     PK: f.string(),
     SK: f.string(),
     id: f.string(),
-    rateLimitCount: f.number(),
-    isAdmin: f.boolean(),
-
-    users: f.stringSet(),
-    ages: f.numberSet(),
-    profilePics: f.binarySet(),
-
-    sessions: f.list(
-      f.map({
-        id: f.string(),
-        token: f.string(),
-        isActive: f.boolean(),
-      }),
-    ),
+    optionalProp: f.boolean().optional(),
   },
 });
 
 (async () => {
-  const id = await KSUID.random();
+  const user1Id = await KSUID.random();
 
-  const res = await users.create({
-    PK: `$user#id_${id.string}`,
+  const user1 = await users.create({
+    PK: `$user#id_${user1Id.string}`,
     SK: `$user`,
-    id: id.string,
-    rateLimitCount: 20,
-    isAdmin: false,
-
-    users: new Set(["mark", "sarah", "john"]),
-    ages: new Set([25, 28, 21]),
-    profilePics: new Set([
-      new Uint8Array([0x01]),
-      new Uint8Array([0x02]),
-      new Uint8Array([0x03]),
-    ]),
-
-    sessions: [{ id: "1", token: "1223123", isActive: true }],
+    id: user1Id.string,
   });
 
-  console.log(res);
+  const user2Id = await KSUID.random();
 
-  const found = await users.get(`$user#id_${id.string}`, `$user`);
+  const user2 = await users.create({
+    PK: `$user#id_${user2Id.string}`,
+    SK: `$user`,
+    id: user2Id.string,
+    optionalProp: true,
+  });
+
+  console.log(user1);
+
+  const found = await users.get(`$user#id_${user1Id.string}`, `$user`);
   console.log(found);
 })();

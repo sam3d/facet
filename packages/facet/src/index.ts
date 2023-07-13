@@ -1,7 +1,7 @@
 import {
+  AttributeValue,
   DynamoDB,
   PutItemCommandOutput,
-  type AttributeValue,
 } from "@aws-sdk/client-dynamodb";
 
 const client = new DynamoDB({
@@ -74,14 +74,63 @@ export function createTable(opts: { name: string }): Table {
   return new Table(opts.name);
 }
 
+type AttributeConfig = {
+  optional: boolean;
+  readOnly: boolean;
+  default: boolean;
+};
+
+type UpdateAttributeConfig<
+  T extends AttributeConfig,
+  U extends Partial<AttributeConfig>,
+> = Omit<T, keyof U> & U;
+
 abstract class FacetAttribute<
   TInput = any,
   TOutput extends AttributeValue = AttributeValue,
+  TConfig extends AttributeConfig = AttributeConfig,
 > {
-  declare _: { input: TInput; output: TOutput };
+  declare _: { input: TInput; output: TOutput; config: TConfig };
+
+  private config: TConfig;
+
+  constructor() {
+    this.config = {
+      optional: false,
+      readOnly: false,
+      default: false,
+    } as TConfig;
+  }
 
   abstract serialize(input: unknown): TOutput;
   abstract deserialize(av: AttributeValue): TInput;
+
+  optional(): FacetAttribute<
+    TInput,
+    TOutput,
+    UpdateAttributeConfig<TConfig, { optional: true }>
+  > {
+    this.config.optional = true;
+    return this as ReturnType<this["optional"]>;
+  }
+
+  readOnly(): FacetAttribute<
+    TInput,
+    TOutput,
+    UpdateAttributeConfig<TConfig, { readOnly: true }>
+  > {
+    this.config.readOnly = true;
+    return this as ReturnType<this["readOnly"]>;
+  }
+
+  default(): FacetAttribute<
+    TInput,
+    TOutput,
+    UpdateAttributeConfig<TConfig, { default: true }>
+  > {
+    this.config.default = true;
+    return this as ReturnType<this["default"]>;
+  }
 }
 
 class FacetString extends FacetAttribute<string, AttributeValue.SMember> {
@@ -296,12 +345,12 @@ export const f = {
     new FacetUnion(attributes),
 };
 
-// NOTE: This is a conditional type for now so intellisense expands it, it
-// actually doesn't gain any additional benefit over having it just be the
-// mapped type definition
-type InferInput<T extends Record<string, FacetAttribute>> = T extends Record<
-  string,
-  FacetAttribute
->
-  ? { [K in keyof T]: T[K]["_"]["input"] }
-  : never;
+type InferInput<T extends Record<string, FacetAttribute>> = {
+  [K in keyof T as T[K]["_"]["config"]["optional"] extends true
+    ? K
+    : never]?: T[K]["_"]["input"];
+} & {
+  [K in keyof T as T[K]["_"]["config"]["optional"] extends true
+    ? never
+    : K]: T[K]["_"]["input"];
+};
