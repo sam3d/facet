@@ -85,7 +85,7 @@ type UpdateAttributeConfig<
   U extends Partial<AttributeConfig>,
 > = Omit<T, keyof U> & U;
 
-type AnyFacetAttribute = FacetAttribute<any, any, any>;
+type AnyFacetAttribute = FacetAttribute<any, AttributeValue, AttributeConfig>;
 
 abstract class FacetAttribute<
   TInput,
