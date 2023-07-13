@@ -13,6 +13,10 @@ export const users = table.entity({
     rateLimitCount: f.number(),
     isAdmin: f.boolean(),
 
+    users: f.stringSet(),
+    ages: f.numberSet(),
+    profilePics: f.binarySet(),
+
     sessions: f.list(
       f.map({
         id: f.string(),
@@ -32,6 +36,14 @@ export const users = table.entity({
     id: id.string,
     rateLimitCount: 20,
     isAdmin: false,
+
+    users: new Set(["mark", "sarah", "john"]),
+    ages: new Set([25, 28, 21]),
+    profilePics: new Set([
+      new Uint8Array([0x01]),
+      new Uint8Array([0x02]),
+      new Uint8Array([0x03]),
+    ]),
 
     sessions: [{ id: "1", token: "1223123", isActive: true }],
   });

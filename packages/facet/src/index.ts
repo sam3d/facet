@@ -81,18 +81,7 @@ abstract class FacetAttribute<
   declare _: { input: TInput; output: TOutput };
 
   abstract serialize(input: unknown): TOutput;
-  abstract deserialize(av: TOutput): TInput;
-}
-
-class FacetNumber extends FacetAttribute<number, AttributeValue.NMember> {
-  serialize(input: unknown) {
-    if (typeof input !== "number") throw new TypeError();
-    return { N: input.toString() };
-  }
-  deserialize(av: AttributeValue) {
-    if (av.N === undefined) throw new TypeError();
-    return parseFloat(av.N);
-  }
+  abstract deserialize(av: AttributeValue): TInput;
 }
 
 class FacetString extends FacetAttribute<string, AttributeValue.SMember> {
@@ -103,6 +92,17 @@ class FacetString extends FacetAttribute<string, AttributeValue.SMember> {
   deserialize(av: AttributeValue) {
     if (av.S === undefined) throw new TypeError();
     return av.S;
+  }
+}
+
+class FacetNumber extends FacetAttribute<number, AttributeValue.NMember> {
+  serialize(input: unknown) {
+    if (typeof input !== "number") throw new TypeError();
+    return { N: input.toString() };
+  }
+  deserialize(av: AttributeValue) {
+    if (av.N === undefined) throw new TypeError();
+    return parseFloat(av.N);
   }
 }
 
@@ -186,6 +186,72 @@ class FacetMap<T extends Record<string, FacetAttribute>> extends FacetAttribute<
   }
 }
 
+class FacetStringSet extends FacetAttribute<
+  Set<string>,
+  AttributeValue.SSMember
+> {
+  serialize(input: unknown) {
+    if (!(input instanceof Set)) throw new TypeError();
+
+    const values: string[] = [];
+    for (const value of input.values()) {
+      if (typeof value !== "string") throw new TypeError();
+      values.push(value);
+    }
+
+    return { SS: values };
+  }
+
+  deserialize(av: AttributeValue) {
+    if (av.SS === undefined) throw new TypeError();
+    return new Set(av.SS);
+  }
+}
+
+class FacetNumberSet extends FacetAttribute<
+  Set<number>,
+  AttributeValue.NSMember
+> {
+  serialize(input: unknown) {
+    if (!(input instanceof Set)) throw new TypeError();
+
+    const values: string[] = [];
+    for (const value of input.values()) {
+      if (typeof value !== "number") throw new TypeError();
+      values.push(value.toString());
+    }
+
+    return { NS: values };
+  }
+
+  deserialize(av: AttributeValue) {
+    if (av.NS === undefined) throw new TypeError();
+    return new Set(av.NS.map((item) => parseFloat(item)));
+  }
+}
+
+class FacetBinarySet extends FacetAttribute<
+  Set<Uint8Array>,
+  AttributeValue.BSMember
+> {
+  serialize(input: unknown) {
+    if (!(input instanceof Set)) throw new TypeError();
+
+    const values: Uint8Array[] = [];
+    for (const value of input.values()) {
+      if (!(value instanceof Uint8Array)) throw new TypeError();
+      values.push(value);
+    }
+
+    return { BS: values };
+  }
+
+  deserialize(av: AttributeValue) {
+    if (av.BS === undefined) throw new TypeError();
+    return new Set(av.BS);
+  }
+}
+
 class FacetUnion<T extends FacetAttribute[]> extends FacetAttribute<
   T[number]["_"]["input"],
   T[number]["_"]["output"]
@@ -210,8 +276,8 @@ class FacetUnion<T extends FacetAttribute[]> extends FacetAttribute<
 
 export const f = {
   // Scalar types
-  number: () => new FacetNumber(),
   string: () => new FacetString(),
+  number: () => new FacetNumber(),
   binary: () => new FacetBinary(),
   boolean: () => new FacetBoolean(),
 
@@ -219,6 +285,11 @@ export const f = {
   list: <T extends FacetAttribute>(attribute: T) => new FacetList(attribute),
   map: <T extends Record<string, FacetAttribute>>(attributes: T) =>
     new FacetMap(attributes),
+
+  // Set types
+  stringSet: () => new FacetStringSet(),
+  numberSet: () => new FacetNumberSet(),
+  binarySet: () => new FacetBinarySet(),
 
   // Meta types
   union: <T extends FacetAttribute[]>(attributes: [...T]) =>
