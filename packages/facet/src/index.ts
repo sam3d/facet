@@ -400,11 +400,9 @@ export const f = {
 };
 
 type InferInput<T extends Record<string, AnyFacetAttribute>> = {
-  [K in keyof T as T[K]["_"]["config"]["required"] extends true
-    ? K
-    : never]: T[K]["_"]["input"];
-} & {
-  [K in keyof T as T[K]["_"]["config"]["required"] extends false
-    ? K
-    : never]?: T[K]["_"]["input"];
+  [K in keyof T]: T[K] extends FacetMap<infer U>
+    ? InferInput<U>
+    : T[K]["_"]["config"]["required"] extends true
+    ? T[K]["_"]["input"]
+    : T[K]["_"]["input"] | undefined;
 };
