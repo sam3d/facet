@@ -45,7 +45,7 @@ class Entity<T extends Record<string, FacetAttribute>> {
     const deserialized = Object.entries(res.Item).reduce(
       (acc, [key, value]) => {
         const attr = this.attributes[key];
-        if (!attr) throw new Error(`Unexpected attribute: ${key}`);
+        if (!attr) throw new TypeError(`Unexpected attribute: ${key}`);
         return { ...acc, [key]: attr.deserialize(value) };
       },
       {},
@@ -59,7 +59,7 @@ class Entity<T extends Record<string, FacetAttribute>> {
 
     const serialized = Object.entries(input).reduce((acc, [key, value]) => {
       const attr = this.attributes[key];
-      if (!attr) throw new Error(`Unexpected attribute: ${key}`);
+      if (!attr) throw new TypeError(`Unexpected attribute: ${key}`);
       return { ...acc, [key]: attr.serialize(value) };
     }, {});
 
@@ -166,7 +166,7 @@ class FacetMap<T extends Record<string, FacetAttribute>> extends FacetAttribute<
 
     const serialized = Object.entries(input).reduce((acc, [key, value]) => {
       const attr = this.attributes[key];
-      if (!attr) throw new Error(`Unexpected map attribute: ${key}`);
+      if (!attr) throw new TypeError(`Unexpected map attribute: ${key}`);
       return { ...acc, [key]: attr.serialize(value) };
     }, {});
 
@@ -178,7 +178,7 @@ class FacetMap<T extends Record<string, FacetAttribute>> extends FacetAttribute<
 
     const deserialized = Object.entries(av.M).reduce((acc, [key, value]) => {
       const attr = this.attributes[key];
-      if (!attr) throw new Error(`Unexpected map attribute: ${key}`);
+      if (!attr) throw new TypeError(`Unexpected map attribute: ${key}`);
       return { ...acc, [key]: attr.deserialize(value) };
     }, {});
 
