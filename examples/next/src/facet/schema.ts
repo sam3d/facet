@@ -6,14 +6,12 @@ const table = createTable({
 });
 
 export const users = table.entity({
-  schema: {
+  attributes: {
     PK: f.string(),
     SK: f.string(),
     id: f.string(),
     rateLimitCount: f.number(),
     isAdmin: f.boolean(),
-
-    type: f.union([f.string(), f.map({ name: f.string() })]),
   },
 });
 
@@ -26,7 +24,6 @@ export const users = table.entity({
     id: id.string,
     rateLimitCount: 20,
     isAdmin: false,
-    type: "Sam",
   });
 
   console.log(res);

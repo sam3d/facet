@@ -20,18 +20,18 @@ class Table {
   }
 
   entity<T extends Record<string, FacetAttribute>>(opts: {
-    schema: T;
+    attributes: T;
   }): Entity<T> {
-    return new Entity(opts.schema, { name: this.name });
+    return new Entity(opts.attributes, { name: this.name });
   }
 }
 
 class Entity<T extends Record<string, FacetAttribute>> {
-  private schema: T;
+  private attributes: T;
   private tableName: string;
 
-  constructor(schema: T, table: { name: string }) {
-    this.schema = schema;
+  constructor(attributes: T, table: { name: string }) {
+    this.attributes = attributes;
     this.tableName = table.name;
   }
 
@@ -40,28 +40,28 @@ class Entity<T extends Record<string, FacetAttribute>> {
       TableName: this.tableName,
       Key: { PK: { S: PK }, SK: { S: SK } },
     });
-    const item = res.Item;
-    if (!item) return null;
+    if (!res.Item) return null;
 
-    const deserialized = Object.entries(this.schema).reduce(
-      (acc, [key, attr]) => {
-        const av = item[key];
-        if (!av) return acc;
-        return { ...acc, [key]: attr.deserialize(av) };
+    const deserialized = Object.entries(res.Item).reduce(
+      (acc, [key, value]) => {
+        const attr = this.attributes[key];
+        if (!attr) throw new Error(`Unexpected attribute: ${key}`);
+        return { ...acc, [key]: attr.deserialize(value) };
       },
-      {} as InferInput<T>,
+      {},
     );
 
-    return deserialized;
+    return deserialized as InferInput<T>;
   }
 
   async create(input: InferInput<T>): Promise<PutItemCommandOutput> {
     if (!input || typeof input !== "object") throw new TypeError();
 
-    const serialized = Object.entries(this.schema).reduce(
-      (acc, [key, attr]) => ({ ...acc, [key]: attr.serialize(input[key]) }),
-      {},
-    );
+    const serialized = Object.entries(input).reduce((acc, [key, value]) => {
+      const attr = this.attributes[key];
+      if (!attr) throw new Error(`Unexpected attribute: ${key}`);
+      return { ...acc, [key]: attr.serialize(value) };
+    }, {});
 
     return client.putItem({
       TableName: this.tableName,
@@ -78,8 +78,7 @@ abstract class FacetAttribute<
   TInput = any,
   TOutput extends AttributeValue = AttributeValue,
 > {
-  declare _input: TInput;
-  declare _output: TOutput;
+  declare _: { input: TInput; output: TOutput };
 
   abstract serialize(input: unknown): TOutput;
   abstract deserialize(av: TOutput): TInput;
@@ -130,7 +129,7 @@ class FacetBoolean extends FacetAttribute<boolean, AttributeValue.BOOLMember> {
 }
 
 class FacetMap<T extends Record<string, FacetAttribute>> extends FacetAttribute<
-  { [K in keyof T]: T[K]["_input"] },
+  { [K in keyof T]: T[K]["_"]["input"] },
   AttributeValue.MMember
 > {
   private attributes: T;
@@ -143,30 +142,31 @@ class FacetMap<T extends Record<string, FacetAttribute>> extends FacetAttribute<
   serialize(input: unknown) {
     if (!input || typeof input !== "object") throw new TypeError();
 
-    return {
-      M: Object.entries(this.attributes).reduce((acc, [key, attr]) => {
-        return {
-          ...acc,
-          [key]: attr.serialize((input as { [key: string]: unknown })[key]),
-        };
-      }, {}),
-    };
+    const serialized = Object.entries(input).reduce((acc, [key, value]) => {
+      const attr = this.attributes[key];
+      if (!attr) throw new Error(`Unexpected map attribute: ${key}`);
+      return { ...acc, [key]: attr.serialize(value) };
+    }, {});
+
+    return { M: serialized };
   }
 
   deserialize(av: AttributeValue) {
     if (av.M === undefined) throw new TypeError();
 
-    return Object.entries(this.attributes).reduce((acc, [key, attr]) => {
-      const subAv = av.M[key];
-      if (!subAv) return acc;
-      return { ...acc, [key]: attr.deserialize(subAv) };
-    }, {} as InferInput<T>);
+    const deserialized = Object.entries(av.M).reduce((acc, [key, value]) => {
+      const attr = this.attributes[key];
+      if (!attr) throw new Error(`Unexpected map attribute: ${key}`);
+      return { ...acc, [key]: attr.deserialize(value) };
+    }, {});
+
+    return deserialized as this["_"]["input"];
   }
 }
 
 class FacetUnion<T extends FacetAttribute[]> extends FacetAttribute<
-  T[number]["_input"],
-  T[number]["_output"]
+  T[number]["_"]["input"],
+  T[number]["_"]["output"]
 > {
   private attributes: T;
 
@@ -206,5 +206,5 @@ type InferInput<T extends Record<string, FacetAttribute>> = T extends Record<
   string,
   FacetAttribute
 >
-  ? { [K in keyof T]: T[K]["_input"] }
+  ? { [K in keyof T]: T[K]["_"]["input"] }
   : never;
