@@ -46,7 +46,6 @@ class Entity<T extends Record<string, FacetAttribute>> {
       Key: { PK: { S: PK }, SK: { S: SK } },
     });
     if (!res.Item) return null;
-
     return new FacetMap(this.attributes).deserialize({ M: res.Item });
   }
 }
@@ -270,7 +269,7 @@ class FacetMap<T extends Record<string, FacetAttribute>> extends FacetAttribute<
       const deserialized = attr.deserialize(value);
       if (deserialized === undefined) return acc;
 
-      return { ...acc, [key]: value };
+      return { ...acc, [key]: deserialized };
     }, {});
 
     if (requiredFields.size > 0)
