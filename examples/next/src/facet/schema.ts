@@ -11,14 +11,26 @@ export const users = table.entity({
     SK: f.string(),
     id: f.string(),
 
-    deeply: f.map({
-      nested: f.map({
-        property: f.map({
-          required: f.string(),
-          example: f.number(),
+    deeply: f
+      .map({
+        nested: f.map({
+          property: f.map({
+            required: f.string(),
+            example: f.number().optional(),
+          }),
         }),
-      }),
-    }),
+      })
+      .optional(),
+  },
+});
+
+users.pick({
+  deeply: {
+    nested: {
+      property: {
+        required: true,
+      },
+    },
   },
 });
 
@@ -34,7 +46,7 @@ export const users = table.entity({
       nested: {
         property: {
           required: "ts",
-          example: 2,
+          example: undefined,
         },
       },
     },
@@ -46,6 +58,8 @@ export const users = table.entity({
     PK: `$user#id_${user2Id.string}`,
     SK: `$user`,
     id: user2Id.string,
+
+    deeply: {},
   });
 
   console.log(user1);

@@ -68,7 +68,17 @@ class Entity<T extends Record<string, AnyFacetAttribute>> {
       Item: serialized,
     });
   }
+
+  pick(mask: DeepPick<T>) {}
 }
+
+type DeepPick<T extends Record<string, AnyFacetAttribute>> = {
+  [K in keyof T]?: Unwrap<T[K]> extends FacetMap<infer U>
+    ? DeepPick<U> | true
+    : true;
+};
+
+type Unwrap<T> = T extends FacetOptional<infer U> ? Unwrap<U> : T;
 
 export function createTable(opts: { name: string }): Table {
   return new Table(opts.name);
@@ -81,6 +91,29 @@ abstract class FacetAttribute<TInput, TOutput extends AttributeValue> {
 
   abstract serialize(input: unknown): TOutput;
   abstract deserialize(av: AttributeValue): TInput;
+
+  optional(): FacetOptional<this> {
+    return new FacetOptional(this);
+  }
+}
+
+class FacetOptional<T extends AnyFacetAttribute> extends FacetAttribute<
+  T["_"]["input"] | undefined,
+  T["_"]["output"]
+> {
+  private attribute: T;
+
+  constructor(attribute: T) {
+    super();
+    this.attribute = attribute;
+  }
+
+  serialize(input: unknown) {
+    return this.attribute.serialize(input);
+  }
+  deserialize(av: AttributeValue) {
+    return this.attribute.deserialize(av);
+  }
 }
 
 class FacetString extends FacetAttribute<string, AttributeValue.SMember> {
@@ -302,7 +335,5 @@ export const f = {
 };
 
 type InferInput<T extends Record<string, AnyFacetAttribute>> = {
-  [K in keyof T]: T[K] extends FacetMap<infer U>
-    ? InferInput<U>
-    : T[K]["_"]["input"];
+  [K in keyof T]: T[K]["_"]["input"];
 };
