@@ -19,14 +19,14 @@ class Table {
     this.name = name;
   }
 
-  entity<T extends Record<string, FacetAttribute>>(opts: {
+  entity<T extends Record<string, AnyFacetAttribute>>(opts: {
     attributes: T;
   }): Entity<T> {
     return new Entity(opts.attributes, { name: this.name });
   }
 }
 
-class Entity<T extends Record<string, FacetAttribute>> {
+class Entity<T extends Record<string, AnyFacetAttribute>> {
   private attributes: T;
   private tableName: string;
 
@@ -40,7 +40,7 @@ class Entity<T extends Record<string, FacetAttribute>> {
     return client.putItem({ TableName: this.tableName, Item: serialized });
   }
 
-  async get(PK: string, SK: string): Promise<InferInput<T> | null> {
+  async get(PK: string, SK: string): Promise<InferDeserialized<T> | null> {
     const res = await client.getItem({
       TableName: this.tableName,
       Key: { PK: { S: PK }, SK: { S: SK } },
@@ -54,18 +54,25 @@ export function createTable(opts: { name: string }): Table {
   return new Table(opts.name);
 }
 
-type DefaultParam<T extends FacetAttribute> =
+type AnyFacetAttribute = FacetAttribute<any, any, any>;
+
+type DefaultParam<T extends AnyFacetAttribute> =
   | T["_"]["input"]
   | (() => T["_"]["input"] | Promise<T["_"]["input"]>);
 
 abstract class FacetAttribute<
-  TInput = any,
-  TOutput extends AttributeValue | undefined = any,
+  TInput,
+  TDeserialized,
+  TSerialized extends AttributeValue | undefined,
 > {
-  declare _: { input: TInput; output: TOutput };
+  declare _: {
+    input: TInput;
+    deserialized: TDeserialized;
+    serialized: TSerialized;
+  };
 
-  abstract serialize(input: unknown): TOutput;
-  abstract deserialize(av: AttributeValue): TInput;
+  abstract serialize(input: unknown): TSerialized;
+  abstract deserialize(av: AttributeValue | undefined): TDeserialized;
 
   optional(): FacetOptional<this> {
     return new FacetOptional(this);
@@ -84,9 +91,10 @@ abstract class FacetAttribute<
   }
 }
 
-class FacetOptional<T extends FacetAttribute> extends FacetAttribute<
+class FacetOptional<T extends AnyFacetAttribute> extends FacetAttribute<
   T["_"]["input"] | undefined,
-  T["_"]["output"] | undefined
+  T["_"]["deserialized"] | undefined,
+  T["_"]["serialized"] | undefined
 > {
   private attribute: T;
 
@@ -105,9 +113,10 @@ class FacetOptional<T extends FacetAttribute> extends FacetAttribute<
   }
 }
 
-class FacetDefault<T extends FacetAttribute> extends FacetAttribute<
+class FacetDefault<T extends AnyFacetAttribute> extends FacetAttribute<
   T["_"]["input"] | undefined,
-  T["_"]["output"]
+  T["_"]["deserialized"],
+  T["_"]["serialized"]
 > {
   private attribute: T;
   private defaultValue: DefaultParam<T>;
@@ -126,9 +135,10 @@ class FacetDefault<T extends FacetAttribute> extends FacetAttribute<
   }
 }
 
-class FacetReadOnly<T extends FacetAttribute> extends FacetAttribute<
+class FacetReadOnly<T extends AnyFacetAttribute> extends FacetAttribute<
   T["_"]["input"],
-  T["_"]["output"]
+  T["_"]["deserialized"],
+  T["_"]["serialized"]
 > {
   private attribute: T;
 
@@ -145,7 +155,11 @@ class FacetReadOnly<T extends FacetAttribute> extends FacetAttribute<
   }
 }
 
-class FacetString extends FacetAttribute<string, AttributeValue.SMember> {
+class FacetString extends FacetAttribute<
+  string,
+  string,
+  AttributeValue.SMember
+> {
   serialize(input: unknown) {
     if (typeof input !== "string") throw new TypeError();
     return { S: input };
@@ -157,7 +171,11 @@ class FacetString extends FacetAttribute<string, AttributeValue.SMember> {
   }
 }
 
-class FacetNumber extends FacetAttribute<number, AttributeValue.NMember> {
+class FacetNumber extends FacetAttribute<
+  number,
+  number,
+  AttributeValue.NMember
+> {
   serialize(input: unknown) {
     if (typeof input !== "number") throw new TypeError();
     return { N: input.toString() };
@@ -169,7 +187,11 @@ class FacetNumber extends FacetAttribute<number, AttributeValue.NMember> {
   }
 }
 
-class FacetBinary extends FacetAttribute<Uint8Array, AttributeValue.BMember> {
+class FacetBinary extends FacetAttribute<
+  Uint8Array,
+  Uint8Array,
+  AttributeValue.BMember
+> {
   serialize(input: unknown) {
     if (!(input instanceof Uint8Array)) throw new TypeError();
     return { B: input };
@@ -181,7 +203,11 @@ class FacetBinary extends FacetAttribute<Uint8Array, AttributeValue.BMember> {
   }
 }
 
-class FacetBoolean extends FacetAttribute<boolean, AttributeValue.BOOLMember> {
+class FacetBoolean extends FacetAttribute<
+  boolean,
+  boolean,
+  AttributeValue.BOOLMember
+> {
   serialize(input: unknown) {
     if (typeof input !== "boolean") throw new TypeError();
     return { BOOL: input };
@@ -193,8 +219,9 @@ class FacetBoolean extends FacetAttribute<boolean, AttributeValue.BOOLMember> {
   }
 }
 
-class FacetList<T extends FacetAttribute> extends FacetAttribute<
+class FacetList<T extends AnyFacetAttribute> extends FacetAttribute<
   T["_"]["input"][],
+  T["_"]["deserialized"],
   AttributeValue.LMember
 > {
   private attribute: T;
@@ -215,8 +242,11 @@ class FacetList<T extends FacetAttribute> extends FacetAttribute<
   }
 }
 
-class FacetMap<T extends Record<string, FacetAttribute>> extends FacetAttribute<
+class FacetMap<
+  T extends Record<string, AnyFacetAttribute>,
+> extends FacetAttribute<
   InferInput<T>,
+  InferDeserialized<T>,
   AttributeValue.MMember
 > {
   private attributes: T;
@@ -281,11 +311,12 @@ class FacetMap<T extends Record<string, FacetAttribute>> extends FacetAttribute<
         `Missing required fields: ${[...requiredFields.values()].join(", ")}`,
       );
 
-    return deserialized as this["_"]["input"];
+    return deserialized as this["_"]["deserialized"];
   }
 }
 
 class FacetStringSet extends FacetAttribute<
+  Set<string>,
   Set<string>,
   AttributeValue.SSMember
 > {
@@ -309,6 +340,7 @@ class FacetStringSet extends FacetAttribute<
 
 class FacetNumberSet extends FacetAttribute<
   Set<number>,
+  Set<number>,
   AttributeValue.NSMember
 > {
   serialize(input: unknown) {
@@ -331,6 +363,7 @@ class FacetNumberSet extends FacetAttribute<
 
 class FacetBinarySet extends FacetAttribute<
   Set<Uint8Array>,
+  Set<Uint8Array>,
   AttributeValue.BSMember
 > {
   serialize(input: unknown) {
@@ -351,9 +384,10 @@ class FacetBinarySet extends FacetAttribute<
   }
 }
 
-class FacetUnion<T extends FacetAttribute[]> extends FacetAttribute<
+class FacetUnion<T extends AnyFacetAttribute[]> extends FacetAttribute<
   T[number]["_"]["input"],
-  T[number]["_"]["output"]
+  T[number]["_"]["deserialized"],
+  T[number]["_"]["serialized"]
 > {
   private attributes: T;
 
@@ -381,8 +415,8 @@ export const f = {
   boolean: () => new FacetBoolean(),
 
   // Document types
-  list: <T extends FacetAttribute>(attribute: T) => new FacetList(attribute),
-  map: <T extends Record<string, FacetAttribute>>(attributes: T) =>
+  list: <T extends AnyFacetAttribute>(attribute: T) => new FacetList(attribute),
+  map: <T extends Record<string, AnyFacetAttribute>>(attributes: T) =>
     new FacetMap(attributes),
 
   // Set types
@@ -391,7 +425,7 @@ export const f = {
   binarySet: () => new FacetBinarySet(),
 
   // Meta types
-  union: <T extends FacetAttribute[]>(attributes: [...T]) =>
+  union: <T extends AnyFacetAttribute[]>(attributes: [...T]) =>
     new FacetUnion(attributes),
 };
 
@@ -404,6 +438,12 @@ type AddQuestionMarks<
   R extends keyof T = RequiredKeys<T>,
 > = Pick<Required<T>, R> & Partial<T>;
 
-type InferInput<T extends Record<string, FacetAttribute>> = AddQuestionMarks<{
-  [K in keyof T]: T[K]["_"]["input"];
-}>;
+type InferInput<T extends Record<string, AnyFacetAttribute>> =
+  AddQuestionMarks<{
+    [K in keyof T]: T[K]["_"]["input"];
+  }>;
+
+type InferDeserialized<T extends Record<string, AnyFacetAttribute>> =
+  AddQuestionMarks<{
+    [K in keyof T]: T[K]["_"]["deserialized"];
+  }>;
