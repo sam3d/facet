@@ -7,9 +7,17 @@ const table = createTable({
 
 export const users = table.entity({
   attributes: {
-    PK: f.string(),
-    SK: f.string(),
-    id: f.string(),
+    PK: f.string().readOnly(),
+    SK: f.string().readOnly(),
+    id: f.string().optional(),
+
+    organization: f
+      .map({
+        id: f.string().readOnly(),
+        name: f.string().readOnly(),
+      })
+      .optional()
+      .readOnly(),
 
     deeply: f
       .map({
@@ -24,14 +32,11 @@ export const users = table.entity({
   },
 });
 
-users.pick({
-  deeply: {
-    nested: {
-      property: {
-        required: true,
-      },
-    },
-  },
+users.pickPrimary({
+  PK: true,
+  SK: true,
+
+  organization: { id: true, name: true },
 });
 
 (async () => {

@@ -50,16 +50,30 @@ class Entity<T extends Record<string, AnyFacetAttribute>> {
     return client.putItem({ TableName: this.tableName, Item: serialized });
   }
 
-  pick<TMask extends DeepPick<T>>(mask: TMask) {}
+  pickPrimary(mask: ReadOnlyPick<T>) {}
+
+  pick(mask: DeepPick<T>) {}
 }
 
+type ReadOnlyPick<T extends Record<string, AnyFacetAttribute>> = {
+  [K in keyof T as UnwrapOptional<T[K]> extends FacetReadOnly<any>
+    ? K
+    : never]?: Unwrap<T[K]> extends FacetMap<infer U>
+    ? ReadOnlyPick<U> | true
+    : true;
+};
+
 type DeepPick<T extends Record<string, AnyFacetAttribute>> = {
-  [K in keyof T]?: UnwrapOptional<T[K]> extends FacetMap<infer U>
+  [K in keyof T]?: Unwrap<T[K]> extends FacetMap<infer U>
     ? DeepPick<U> | true
     : true;
 };
 
 type UnwrapOptional<T> = T extends FacetOptional<infer U>
+  ? UnwrapOptional<U>
+  : T;
+
+type Unwrap<T> = T extends FacetReadOnly<infer U> | FacetOptional<infer U>
   ? UnwrapOptional<U>
   : T;
 
@@ -78,9 +92,32 @@ abstract class FacetAttribute<TInput, TOutput extends AttributeValue> {
   optional(): FacetOptional<this> {
     return new FacetOptional(this);
   }
+
+  readOnly(): FacetReadOnly<this> {
+    return new FacetReadOnly(this);
+  }
 }
 
 class FacetOptional<T extends AnyFacetAttribute> extends FacetAttribute<
+  T["_"]["input"] | undefined,
+  T["_"]["output"]
+> {
+  private attribute: T;
+
+  constructor(attribute: T) {
+    super();
+    this.attribute = attribute;
+  }
+
+  serialize(input: unknown) {
+    return this.attribute.serialize(input);
+  }
+  deserialize(av: AttributeValue) {
+    return this.attribute.deserialize(av);
+  }
+}
+
+class FacetReadOnly<T extends AnyFacetAttribute> extends FacetAttribute<
   T["_"]["input"] | undefined,
   T["_"]["output"]
 > {
