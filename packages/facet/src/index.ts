@@ -69,16 +69,18 @@ class Entity<T extends Record<string, AnyFacetAttribute>> {
     });
   }
 
-  pick(mask: DeepPick<T>) {}
+  pick<TMask extends DeepPick<T>>(mask: TMask) {}
 }
 
 type DeepPick<T extends Record<string, AnyFacetAttribute>> = {
-  [K in keyof T]?: Unwrap<T[K]> extends FacetMap<infer U>
+  [K in keyof T]?: UnwrapOptional<T[K]> extends FacetMap<infer U>
     ? DeepPick<U> | true
     : true;
 };
 
-type Unwrap<T> = T extends FacetOptional<infer U> ? Unwrap<U> : T;
+type UnwrapOptional<T> = T extends FacetOptional<infer U>
+  ? UnwrapOptional<U>
+  : T;
 
 export function createTable(opts: { name: string }): Table {
   return new Table(opts.name);
@@ -188,10 +190,7 @@ class FacetList<T extends AnyFacetAttribute> extends FacetAttribute<
 
 class FacetMap<
   T extends Record<string, AnyFacetAttribute>,
-> extends FacetAttribute<
-  { [K in keyof T]: T[K]["_"]["input"] },
-  AttributeValue.MMember
-> {
+> extends FacetAttribute<InferInput<T>, AttributeValue.MMember> {
   private attributes: T;
 
   constructor(attributes: T) {
@@ -334,6 +333,16 @@ export const f = {
     new FacetUnion(attributes),
 };
 
-type InferInput<T extends Record<string, AnyFacetAttribute>> = {
-  [K in keyof T]: T[K]["_"]["input"];
-};
+type RequiredKeys<T extends object> = {
+  [K in keyof T]: undefined extends T[K] ? never : K;
+}[keyof T];
+
+type AddQuestionMarks<
+  T extends object,
+  R extends keyof T = RequiredKeys<T>,
+> = Pick<Required<T>, R> & Partial<T>;
+
+type InferInput<T extends Record<string, AnyFacetAttribute>> =
+  AddQuestionMarks<{
+    [K in keyof T]: T[K]["_"]["input"];
+  }>;

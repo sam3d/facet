@@ -46,7 +46,6 @@ users.pick({
       nested: {
         property: {
           required: "ts",
-          example: undefined,
         },
       },
     },
@@ -58,8 +57,6 @@ users.pick({
     PK: `$user#id_${user2Id.string}`,
     SK: `$user`,
     id: user2Id.string,
-
-    deeply: {},
   });
 
   console.log(user1);
