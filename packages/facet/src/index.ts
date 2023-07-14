@@ -78,6 +78,7 @@ type AttributeConfig = {
   required: boolean;
   readOnly: boolean;
   default: boolean;
+  data?: any;
 };
 
 type UpdateAttributeConfig<
@@ -239,12 +240,17 @@ class FacetMap<
 > extends FacetAttribute<
   { [K in keyof T]: T[K]["_"]["input"] },
   AttributeValue.MMember,
-  { required: true; readOnly: false; default: false }
+  { required: true; readOnly: false; default: false; data: T }
 > {
   private attributes: T;
 
   constructor(attributes: T) {
-    super({ required: true, readOnly: false, default: false });
+    super({
+      required: true,
+      readOnly: false,
+      default: false,
+      data: attributes,
+    });
     this.attributes = attributes;
   }
 
@@ -400,8 +406,11 @@ export const f = {
 };
 
 type InferInput<T extends Record<string, AnyFacetAttribute>> = {
-  [K in keyof T]: T[K] extends FacetMap<infer U>
-    ? InferInput<U>
+  [K in keyof T]: T[K]["_"]["config"]["data"] extends Record<
+    string,
+    AnyFacetAttribute
+  >
+    ? InferInput<T[K]["_"]["config"]["data"]>
     : T[K]["_"]["config"]["required"] extends true
     ? T[K]["_"]["input"]
     : T[K]["_"]["input"] | undefined;

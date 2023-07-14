@@ -11,14 +11,16 @@ export const users = table.entity({
     SK: f.string(),
     id: f.string(),
 
-    deeply: f.map({
-      nested: f.map({
-        property: f.map({
-          required: f.string(),
-          example: f.number().optional(),
+    deeply: f
+      .map({
+        nested: f.map({
+          property: f.map({
+            required: f.string(),
+            example: f.number().optional(),
+          }),
         }),
-      }),
-    }),
+      })
+      .optional(),
   },
 });
 
