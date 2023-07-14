@@ -1,5 +1,4 @@
 import { createTable, f } from "facet";
-import KSUID from "ksuid";
 
 const table = createTable({
   name: "Facet",
@@ -7,11 +6,23 @@ const table = createTable({
 
 export const users = table.entity({
   attributes: {
-    id: f.string().default(async () => (await KSUID.random()).string),
+    PK: f.string(),
+    SK: f.string(),
+
+    id: f.string().optional(),
     email: f.string(),
   },
 });
 
-users.create({
-  email: "example.user@gmail.com",
-});
+(async () => {
+  const res = await users.create({
+    PK: "test",
+    SK: "test",
+
+    email: "example.user@gmail.com",
+  });
+  console.log(res);
+
+  const user = await users.get("test", "test");
+  console.log(user);
+})();

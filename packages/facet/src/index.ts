@@ -83,7 +83,7 @@ abstract class FacetAttribute<
 
 class FacetOptional<T extends FacetAttribute> extends FacetAttribute<
   T["_"]["input"] | undefined,
-  T["_"]["output"]
+  T["_"]["output"] | undefined
 > {
   private attribute: T;
 
@@ -93,9 +93,11 @@ class FacetOptional<T extends FacetAttribute> extends FacetAttribute<
   }
 
   serialize(input: unknown) {
+    if (input === undefined) return undefined;
     return this.attribute.serialize(input);
   }
-  deserialize(av: AttributeValue) {
+  deserialize(av: AttributeValue | undefined) {
+    if (av === undefined) return undefined;
     return this.attribute.deserialize(av);
   }
 }
@@ -236,9 +238,14 @@ class FacetMap<T extends Record<string, FacetAttribute>> extends FacetAttribute<
 
     const serialized = Object.entries(input).reduce((acc, [key, value]) => {
       requiredFields.delete(key);
+
       const attr = this.attributes[key];
       if (!attr) throw new TypeError(`Unexpected attribute: ${key}`);
-      return { ...acc, [key]: attr.serialize(value) };
+
+      const serialized = attr.serialize(value);
+      if (serialized === undefined) return acc;
+
+      return { ...acc, [key]: serialized };
     }, {});
 
     if (requiredFields.size > 0)
@@ -256,9 +263,14 @@ class FacetMap<T extends Record<string, FacetAttribute>> extends FacetAttribute<
 
     const deserialized = Object.entries(av.M).reduce((acc, [key, value]) => {
       requiredFields.delete(key);
+
       const attr = this.attributes[key];
       if (!attr) throw new TypeError(`Unexpected attribute: ${key}`);
-      return { ...acc, [key]: attr.deserialize(value) };
+
+      const deserialized = attr.deserialize(value);
+      if (deserialized === undefined) return acc;
+
+      return { ...acc, [key]: value };
     }, {});
 
     if (requiredFields.size > 0)
