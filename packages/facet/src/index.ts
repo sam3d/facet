@@ -406,12 +406,13 @@ export const f = {
 };
 
 type InferInput<T extends Record<string, AnyFacetAttribute>> = {
-  [K in keyof T]: T[K]["_"]["config"]["data"] extends Record<
-    string,
-    AnyFacetAttribute
-  >
-    ? InferInput<T[K]["_"]["config"]["data"]>
-    : T[K]["_"]["config"]["required"] extends true
-    ? T[K]["_"]["input"]
-    : T[K]["_"]["input"] | undefined;
+  [K in keyof T]: T[K]["_"]["config"]["required"] extends true
+    ? T[K]["_"]["config"]["data"] extends Record<string, AnyFacetAttribute>
+      ? InferInput<T[K]["_"]["config"]["data"]>
+      : T[K]["_"]["input"]
+    :
+        | (T[K]["_"]["config"]["data"] extends Record<string, AnyFacetAttribute>
+            ? InferInput<T[K]["_"]["config"]["data"]>
+            : T[K]["_"]["input"])
+        | undefined;
 };

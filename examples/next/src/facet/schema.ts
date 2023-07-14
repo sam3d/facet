@@ -48,6 +48,8 @@ export const users = table.entity({
     PK: `$user#id_${user2Id.string}`,
     SK: `$user`,
     id: user2Id.string,
+
+    deeply: undefined,
   });
 
   console.log(user1);
