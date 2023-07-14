@@ -42,31 +42,12 @@ class Entity<T extends Record<string, AnyFacetAttribute>> {
     });
     if (!res.Item) return null;
 
-    const deserialized = Object.entries(res.Item).reduce(
-      (acc, [key, value]) => {
-        const attr = this.attributes[key];
-        if (!attr) throw new TypeError(`Unexpected attribute: ${key}`);
-        return { ...acc, [key]: attr.deserialize(value) };
-      },
-      {},
-    );
-
-    return deserialized as InferInput<T>;
+    return new FacetMap(this.attributes).deserialize({ M: res.Item });
   }
 
   async create(input: InferInput<T>): Promise<PutItemCommandOutput> {
-    if (!input || typeof input !== "object") throw new TypeError();
-
-    const serialized = Object.entries(input).reduce((acc, [key, value]) => {
-      const attr = this.attributes[key];
-      if (!attr) throw new TypeError(`Unexpected attribute: ${key}`);
-      return { ...acc, [key]: attr.serialize(value) };
-    }, {});
-
-    return client.putItem({
-      TableName: this.tableName,
-      Item: serialized,
-    });
+    const serialized = new FacetMap(this.attributes).serialize(input).M;
+    return client.putItem({ TableName: this.tableName, Item: serialized });
   }
 
   pick<TMask extends DeepPick<T>>(mask: TMask) {}
@@ -198,14 +179,30 @@ class FacetMap<
     this.attributes = attributes;
   }
 
+  private getRequiredFields() {
+    return new Set(
+      Object.entries(this.attributes).flatMap(([key, value]) =>
+        value instanceof FacetOptional ? [] : [key],
+      ),
+    );
+  }
+
   serialize(input: unknown) {
     if (!input || typeof input !== "object") throw new TypeError();
 
+    const requiredFields = this.getRequiredFields();
+
     const serialized = Object.entries(input).reduce((acc, [key, value]) => {
+      requiredFields.delete(key);
       const attr = this.attributes[key];
-      if (!attr) throw new TypeError(`Unexpected map attribute: ${key}`);
+      if (!attr) throw new TypeError(`Unexpected attribute: ${key}`);
       return { ...acc, [key]: attr.serialize(value) };
     }, {});
+
+    if (requiredFields.size > 0)
+      throw new Error(
+        `Missing required fields: ${[...requiredFields.values()].join(", ")}`,
+      );
 
     return { M: serialized };
   }
@@ -213,11 +210,19 @@ class FacetMap<
   deserialize(av: AttributeValue) {
     if (av.M === undefined) throw new TypeError();
 
+    const requiredFields = this.getRequiredFields();
+
     const deserialized = Object.entries(av.M).reduce((acc, [key, value]) => {
+      requiredFields.delete(key);
       const attr = this.attributes[key];
-      if (!attr) throw new TypeError(`Unexpected map attribute: ${key}`);
+      if (!attr) throw new TypeError(`Unexpected attribute: ${key}`);
       return { ...acc, [key]: attr.deserialize(value) };
     }, {});
+
+    if (requiredFields.size > 0)
+      throw new Error(
+        `Missing required fields: ${[...requiredFields.values()].join(", ")}`,
+      );
 
     return deserialized as this["_"]["input"];
   }
