@@ -78,6 +78,10 @@ abstract class FacetAttribute<
   readOnly(): FacetReadOnly<this> {
     return new FacetReadOnly(this);
   }
+
+  list(): FacetList<this> {
+    return new FacetList(this);
+  }
 }
 
 class FacetOptional<T extends FacetAttribute> extends FacetAttribute<
