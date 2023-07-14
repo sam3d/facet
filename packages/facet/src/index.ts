@@ -19,20 +19,25 @@ class Table {
     this.name = name;
   }
 
-  entity<T extends Record<string, AnyFacetAttribute>>(opts: {
+  entity<T extends Record<string, FacetAttribute>>(opts: {
     attributes: T;
   }): Entity<T> {
     return new Entity(opts.attributes, { name: this.name });
   }
 }
 
-class Entity<T extends Record<string, AnyFacetAttribute>> {
+class Entity<T extends Record<string, FacetAttribute>> {
   private attributes: T;
   private tableName: string;
 
   constructor(attributes: T, table: { name: string }) {
     this.attributes = attributes;
     this.tableName = table.name;
+  }
+
+  async create(input: InferInput<T>): Promise<PutItemCommandOutput> {
+    const serialized = new FacetMap(this.attributes).serialize(input).M;
+    return client.putItem({ TableName: this.tableName, Item: serialized });
   }
 
   async get(PK: string, SK: string): Promise<InferInput<T> | null> {
@@ -44,46 +49,20 @@ class Entity<T extends Record<string, AnyFacetAttribute>> {
 
     return new FacetMap(this.attributes).deserialize({ M: res.Item });
   }
-
-  async create(input: InferInput<T>): Promise<PutItemCommandOutput> {
-    const serialized = new FacetMap(this.attributes).serialize(input).M;
-    return client.putItem({ TableName: this.tableName, Item: serialized });
-  }
-
-  pickPrimary(mask: ReadOnlyPick<T>) {}
-
-  pick(mask: DeepPick<T>) {}
 }
-
-type ReadOnlyPick<T extends Record<string, AnyFacetAttribute>> = {
-  [K in keyof T as UnwrapOptional<T[K]> extends FacetReadOnly<any>
-    ? K
-    : never]?: Unwrap<T[K]> extends FacetMap<infer U>
-    ? ReadOnlyPick<U> | true
-    : true;
-};
-
-type DeepPick<T extends Record<string, AnyFacetAttribute>> = {
-  [K in keyof T]?: Unwrap<T[K]> extends FacetMap<infer U>
-    ? DeepPick<U> | true
-    : true;
-};
-
-type UnwrapOptional<T> = T extends FacetOptional<infer U>
-  ? UnwrapOptional<U>
-  : T;
-
-type Unwrap<T> = T extends FacetReadOnly<infer U> | FacetOptional<infer U>
-  ? UnwrapOptional<U>
-  : T;
 
 export function createTable(opts: { name: string }): Table {
   return new Table(opts.name);
 }
 
-type AnyFacetAttribute = FacetAttribute<any, AttributeValue>;
+type DefaultParam<T extends FacetAttribute> =
+  | T["_"]["input"]
+  | (() => T["_"]["input"] | Promise<T["_"]["input"]>);
 
-abstract class FacetAttribute<TInput, TOutput extends AttributeValue> {
+abstract class FacetAttribute<
+  TInput = any,
+  TOutput extends AttributeValue | undefined = any,
+> {
   declare _: { input: TInput; output: TOutput };
 
   abstract serialize(input: unknown): TOutput;
@@ -93,12 +72,16 @@ abstract class FacetAttribute<TInput, TOutput extends AttributeValue> {
     return new FacetOptional(this);
   }
 
+  default(defaultValue: DefaultParam<this>): FacetDefault<this> {
+    return new FacetDefault(this, defaultValue);
+  }
+
   readOnly(): FacetReadOnly<this> {
     return new FacetReadOnly(this);
   }
 }
 
-class FacetOptional<T extends AnyFacetAttribute> extends FacetAttribute<
+class FacetOptional<T extends FacetAttribute> extends FacetAttribute<
   T["_"]["input"] | undefined,
   T["_"]["output"]
 > {
@@ -117,8 +100,29 @@ class FacetOptional<T extends AnyFacetAttribute> extends FacetAttribute<
   }
 }
 
-class FacetReadOnly<T extends AnyFacetAttribute> extends FacetAttribute<
+class FacetDefault<T extends FacetAttribute> extends FacetAttribute<
   T["_"]["input"] | undefined,
+  T["_"]["output"]
+> {
+  private attribute: T;
+  private defaultValue: DefaultParam<T>;
+
+  constructor(attribute: T, defaultValue: DefaultParam<T>) {
+    super();
+    this.attribute = attribute;
+    this.defaultValue = defaultValue;
+  }
+
+  serialize(input: unknown) {
+    return this.attribute.serialize(input);
+  }
+  deserialize(av: AttributeValue) {
+    return this.attribute.deserialize(av);
+  }
+}
+
+class FacetReadOnly<T extends FacetAttribute> extends FacetAttribute<
+  T["_"]["input"],
   T["_"]["output"]
 > {
   private attribute: T;
@@ -184,7 +188,7 @@ class FacetBoolean extends FacetAttribute<boolean, AttributeValue.BOOLMember> {
   }
 }
 
-class FacetList<T extends AnyFacetAttribute> extends FacetAttribute<
+class FacetList<T extends FacetAttribute> extends FacetAttribute<
   T["_"]["input"][],
   AttributeValue.LMember
 > {
@@ -206,9 +210,10 @@ class FacetList<T extends AnyFacetAttribute> extends FacetAttribute<
   }
 }
 
-class FacetMap<
-  T extends Record<string, AnyFacetAttribute>,
-> extends FacetAttribute<InferInput<T>, AttributeValue.MMember> {
+class FacetMap<T extends Record<string, FacetAttribute>> extends FacetAttribute<
+  InferInput<T>,
+  AttributeValue.MMember
+> {
   private attributes: T;
 
   constructor(attributes: T) {
@@ -331,7 +336,7 @@ class FacetBinarySet extends FacetAttribute<
   }
 }
 
-class FacetUnion<T extends AnyFacetAttribute[]> extends FacetAttribute<
+class FacetUnion<T extends FacetAttribute[]> extends FacetAttribute<
   T[number]["_"]["input"],
   T[number]["_"]["output"]
 > {
@@ -361,8 +366,8 @@ export const f = {
   boolean: () => new FacetBoolean(),
 
   // Document types
-  list: <T extends AnyFacetAttribute>(attribute: T) => new FacetList(attribute),
-  map: <T extends Record<string, AnyFacetAttribute>>(attributes: T) =>
+  list: <T extends FacetAttribute>(attribute: T) => new FacetList(attribute),
+  map: <T extends Record<string, FacetAttribute>>(attributes: T) =>
     new FacetMap(attributes),
 
   // Set types
@@ -371,7 +376,7 @@ export const f = {
   binarySet: () => new FacetBinarySet(),
 
   // Meta types
-  union: <T extends AnyFacetAttribute[]>(attributes: [...T]) =>
+  union: <T extends FacetAttribute[]>(attributes: [...T]) =>
     new FacetUnion(attributes),
 };
 
@@ -384,7 +389,6 @@ type AddQuestionMarks<
   R extends keyof T = RequiredKeys<T>,
 > = Pick<Required<T>, R> & Partial<T>;
 
-type InferInput<T extends Record<string, AnyFacetAttribute>> =
-  AddQuestionMarks<{
-    [K in keyof T]: T[K]["_"]["input"];
-  }>;
+type InferInput<T extends Record<string, FacetAttribute>> = AddQuestionMarks<{
+  [K in keyof T]: T[K]["_"]["input"];
+}>;
