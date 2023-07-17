@@ -55,9 +55,9 @@ class FacetAttribute<
 > {
   private value: T;
   private props: U;
-  private defaultValue?: DefaultValue<T["_"]["type"]>;
+  private defaultValue?: DefaultValue<T["_type"]>;
 
-  constructor(value: T, props: U, defaultValue?: DefaultValue<T["_"]["type"]>) {
+  constructor(value: T, props: U, defaultValue?: DefaultValue<T["_type"]>) {
     this.value = value;
     this.props = props;
     this.defaultValue = defaultValue;
@@ -74,7 +74,7 @@ class FacetAttribute<
   }
 
   default(
-    value: DefaultValue<T["_"]["type"]>,
+    value: DefaultValue<T["_type"]>,
   ): FacetAttribute<T, UpdateProps<U, { default: true }>> {
     this.defaultValue = value;
     this.props.default = true;
@@ -83,7 +83,7 @@ class FacetAttribute<
 }
 
 abstract class FacetAttributeValue<T = any> {
-  declare _: { type: T };
+  declare _type: T;
 
   abstract serialize(input: unknown): AttributeValue;
   abstract deserialize(input: AttributeValue): T;
@@ -119,6 +119,10 @@ abstract class FacetAttributeValue<T = any> {
       value,
     );
   }
+
+  list(): FacetList<this> {
+    return new FacetList(this);
+  }
 }
 
 class FacetString extends FacetAttributeValue<string> {
@@ -133,6 +137,29 @@ class FacetString extends FacetAttributeValue<string> {
   }
 }
 
+class FacetList<T extends FacetAttributeValue> extends FacetAttributeValue<
+  T["_type"][]
+> {
+  private attribute: T;
+
+  constructor(attribute: T) {
+    super();
+    this.attribute = attribute;
+  }
+
+  serialize(input: unknown) {
+    if (!Array.isArray(input)) throw new TypeError();
+    return { L: input.map((item) => this.attribute.serialize(item)) };
+  }
+
+  deserialize(av: AttributeValue) {
+    if (av.L === undefined) throw new TypeError();
+    return av.L.map((item) => this.attribute.deserialize(item));
+  }
+}
+
 export const f = {
   string: () => new FacetString(),
+
+  list: <T extends FacetAttributeValue>(value: T) => new FacetList(value),
 };
