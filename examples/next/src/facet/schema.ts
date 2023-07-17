@@ -9,10 +9,7 @@ export const users = table.entity({
     PK: f.string(),
     SK: f.string(),
 
-    id: f
-      .string()
-      .list()
-      .default(() => ["hi!"]),
+    id: f.string(),
 
     email: f.string(),
   },

@@ -18,17 +18,17 @@ class Table {
   entity<T extends Record<string, FacetAttribute | FacetAttributeValue>>(opts: {
     attributes: T;
   }): Entity<T> {
-    return new Entity(opts.attributes, { name: this.name });
+    return new Entity(opts.attributes, this);
   }
 }
 
 class Entity<T extends Record<string, FacetAttribute | FacetAttributeValue>> {
   private attributes: T;
-  private tableName: string;
+  private table: Table;
 
-  constructor(attributes: T, table: { name: string }) {
+  constructor(attributes: T, table: Table) {
     this.attributes = attributes;
-    this.tableName = table.name;
+    this.table = table;
   }
 }
 
@@ -49,12 +49,17 @@ type UpdateProps<
   U extends Partial<AttributeProps>,
 > = Omit<T, keyof U> & U;
 
+/**
+ * FacetAttribute is a wrapper over a DynamoDB attribute value. It adds support
+ * for optional, read-only, and default values.
+ */
 class FacetAttribute<
   T extends FacetAttributeValue = any,
   U extends AttributeProps = any,
 > {
   private value: T;
   private props: U;
+
   private defaultValue?: DefaultValue<T["_type"]>;
 
   constructor(value: T, props: U, defaultValue?: DefaultValue<T["_type"]>) {
@@ -82,6 +87,16 @@ class FacetAttribute<
   }
 }
 
+/**
+ * FacetAttributeValue represents a DynamoDB AttributeValue. It wraps a
+ * primitive value type that knows how to serialize and deserialize to the
+ * DynamoDB table.
+ *
+ * It is commonly wrapped by a `FacetAttribute` to provide information
+ * additional metadata about the attribute, but this is not necessary. Methods
+ * are provided on this class that will convert this type to the wrapper type
+ * automatically.
+ */
 abstract class FacetAttributeValue<T = any> {
   declare _type: T;
 
@@ -115,7 +130,11 @@ abstract class FacetAttributeValue<T = any> {
   ): FacetAttribute<this, { required: true; readOnly: false; default: true }> {
     return new FacetAttribute(
       this,
-      { required: true, readOnly: false, default: true },
+      {
+        required: true,
+        readOnly: false,
+        default: true,
+      },
       value,
     );
   }
