@@ -9,20 +9,10 @@ export const users = table.entity({
     PK: f.string(),
     SK: f.string(),
 
-    id: f.string().optional(),
+    id: f.string(),
+
     email: f.string(),
   },
 });
 
-(async () => {
-  const res = await users.create({
-    PK: "test",
-    SK: "test",
-
-    email: "example.user@gmail.com",
-  });
-  console.log(res);
-
-  const user = await users.get("test", "test");
-  console.log(user);
-})();
+(async () => {})();

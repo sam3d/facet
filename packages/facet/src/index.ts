@@ -1,8 +1,4 @@
-import {
-  AttributeValue,
-  DynamoDB,
-  PutItemCommandOutput,
-} from "@aws-sdk/client-dynamodb";
+import { AttributeValue, DynamoDB } from "@aws-sdk/client-dynamodb";
 
 const client = new DynamoDB({
   region: "eu-west-2",
@@ -19,14 +15,14 @@ class Table {
     this.name = name;
   }
 
-  entity<T extends Record<string, FacetAttribute>>(opts: {
+  entity<T extends Record<string, FacetAttribute | FacetAttributeValue>>(opts: {
     attributes: T;
   }): Entity<T> {
     return new Entity(opts.attributes, { name: this.name });
   }
 }
 
-class Entity<T extends Record<string, FacetAttribute>> {
+class Entity<T extends Record<string, FacetAttribute | FacetAttributeValue>> {
   private attributes: T;
   private tableName: string;
 
@@ -34,118 +30,98 @@ class Entity<T extends Record<string, FacetAttribute>> {
     this.attributes = attributes;
     this.tableName = table.name;
   }
-
-  async create(input: InferInput<T>): Promise<PutItemCommandOutput> {
-    const serialized = new FacetMap(this.attributes).serialize(input).M;
-    return client.putItem({ TableName: this.tableName, Item: serialized });
-  }
-
-  async get(PK: string, SK: string): Promise<InferInput<T> | null> {
-    const res = await client.getItem({
-      TableName: this.tableName,
-      Key: { PK: { S: PK }, SK: { S: SK } },
-    });
-    if (!res.Item) return null;
-    return new FacetMap(this.attributes).deserialize({ M: res.Item });
-  }
 }
 
 export function createTable(opts: { name: string }): Table {
   return new Table(opts.name);
 }
 
-type DefaultParam<T extends FacetAttribute> =
-  | T["_"]["input"]
-  | (() => T["_"]["input"] | Promise<T["_"]["input"]>);
+type DefaultValue<T> = T | (() => T | Promise<T>);
 
-abstract class FacetAttribute<
-  TInput = any,
-  TOutput extends AttributeValue | undefined = any,
+type AttributeProps = {
+  required: boolean;
+  readOnly: boolean;
+  default: boolean;
+};
+
+type UpdateProps<
+  T extends AttributeProps,
+  U extends Partial<AttributeProps>,
+> = Omit<T, keyof U> & U;
+
+class FacetAttribute<
+  T extends FacetAttributeValue = any,
+  U extends AttributeProps = any,
 > {
-  declare _: { input: TInput; output: TOutput };
+  private value: T;
+  private props: U;
+  private defaultValue?: DefaultValue<T["_"]["type"]>;
 
-  abstract serialize(input: unknown): TOutput;
-  abstract deserialize(av: AttributeValue): TInput;
-
-  optional(): FacetOptional<this> {
-    return new FacetOptional(this);
-  }
-
-  default(defaultValue: DefaultParam<this>): FacetDefault<this> {
-    return new FacetDefault(this, defaultValue);
-  }
-
-  readOnly(): FacetReadOnly<this> {
-    return new FacetReadOnly(this);
-  }
-
-  list(): FacetList<this> {
-    return new FacetList(this);
-  }
-}
-
-class FacetOptional<T extends FacetAttribute> extends FacetAttribute<
-  T["_"]["input"] | undefined,
-  T["_"]["output"] | undefined
-> {
-  private attribute: T;
-
-  constructor(attribute: T) {
-    super();
-    this.attribute = attribute;
-  }
-
-  serialize(input: unknown) {
-    if (input === undefined) return undefined;
-    return this.attribute.serialize(input);
-  }
-  deserialize(av: AttributeValue | undefined) {
-    if (av === undefined) return undefined;
-    return this.attribute.deserialize(av);
-  }
-}
-
-class FacetDefault<T extends FacetAttribute> extends FacetAttribute<
-  T["_"]["input"] | undefined,
-  T["_"]["output"]
-> {
-  private attribute: T;
-  private defaultValue: DefaultParam<T>;
-
-  constructor(attribute: T, defaultValue: DefaultParam<T>) {
-    super();
-    this.attribute = attribute;
+  constructor(value: T, props: U, defaultValue?: DefaultValue<T["_"]["type"]>) {
+    this.value = value;
+    this.props = props;
     this.defaultValue = defaultValue;
   }
 
-  serialize(input: unknown) {
-    return this.attribute.serialize(input);
+  optional(): FacetAttribute<T, UpdateProps<U, { required: false }>> {
+    this.props.required = false;
+    return this as ReturnType<this["optional"]>;
   }
-  deserialize(av: AttributeValue) {
-    return this.attribute.deserialize(av);
+
+  readOnly(): FacetAttribute<T, UpdateProps<U, { readOnly: true }>> {
+    this.props.readOnly = true;
+    return this as ReturnType<this["readOnly"]>;
+  }
+
+  default(
+    value: DefaultValue<T["_"]["type"]>,
+  ): FacetAttribute<T, UpdateProps<U, { default: true }>> {
+    this.defaultValue = value;
+    this.props.default = true;
+    return this as ReturnType<this["default"]>;
   }
 }
 
-class FacetReadOnly<T extends FacetAttribute> extends FacetAttribute<
-  T["_"]["input"],
-  T["_"]["output"]
-> {
-  private attribute: T;
+abstract class FacetAttributeValue<T = any> {
+  declare _: { type: T };
 
-  constructor(attribute: T) {
-    super();
-    this.attribute = attribute;
+  abstract serialize(input: unknown): AttributeValue;
+  abstract deserialize(input: AttributeValue): T;
+
+  optional(): FacetAttribute<
+    this,
+    { required: false; readOnly: false; default: false }
+  > {
+    return new FacetAttribute(this, {
+      required: false,
+      readOnly: false,
+      default: false,
+    });
   }
 
-  serialize(input: unknown) {
-    return this.attribute.serialize(input);
+  readOnly(): FacetAttribute<
+    this,
+    { required: true; readOnly: true; default: false }
+  > {
+    return new FacetAttribute(this, {
+      required: true,
+      readOnly: true,
+      default: false,
+    });
   }
-  deserialize(av: AttributeValue) {
-    return this.attribute.deserialize(av);
+
+  default(
+    value: DefaultValue<T>,
+  ): FacetAttribute<this, { required: true; readOnly: false; default: true }> {
+    return new FacetAttribute(
+      this,
+      { required: true, readOnly: false, default: true },
+      value,
+    );
   }
 }
 
-class FacetString extends FacetAttribute<string, AttributeValue.SMember> {
+class FacetString extends FacetAttributeValue<string> {
   serialize(input: unknown) {
     if (typeof input !== "string") throw new TypeError();
     return { S: input };
@@ -157,253 +133,6 @@ class FacetString extends FacetAttribute<string, AttributeValue.SMember> {
   }
 }
 
-class FacetNumber extends FacetAttribute<number, AttributeValue.NMember> {
-  serialize(input: unknown) {
-    if (typeof input !== "number") throw new TypeError();
-    return { N: input.toString() };
-  }
-
-  deserialize(av: AttributeValue) {
-    if (av.N === undefined) throw new TypeError();
-    return parseFloat(av.N);
-  }
-}
-
-class FacetBinary extends FacetAttribute<Uint8Array, AttributeValue.BMember> {
-  serialize(input: unknown) {
-    if (!(input instanceof Uint8Array)) throw new TypeError();
-    return { B: input };
-  }
-
-  deserialize(av: AttributeValue) {
-    if (av.B === undefined) throw new TypeError();
-    return av.B;
-  }
-}
-
-class FacetBoolean extends FacetAttribute<boolean, AttributeValue.BOOLMember> {
-  serialize(input: unknown) {
-    if (typeof input !== "boolean") throw new TypeError();
-    return { BOOL: input };
-  }
-
-  deserialize(av: AttributeValue) {
-    if (av.BOOL === undefined) throw new TypeError();
-    return av.BOOL;
-  }
-}
-
-class FacetList<T extends FacetAttribute> extends FacetAttribute<
-  T["_"]["input"][],
-  AttributeValue.LMember
-> {
-  private attribute: T;
-
-  constructor(attribute: T) {
-    super();
-    this.attribute = attribute;
-  }
-
-  serialize(input: unknown) {
-    if (!Array.isArray(input)) throw new TypeError();
-    return { L: input.map((item) => this.attribute.serialize(item)) };
-  }
-
-  deserialize(av: AttributeValue) {
-    if (av.L === undefined) throw new TypeError();
-    return av.L.map((item) => this.attribute.deserialize(item));
-  }
-}
-
-class FacetMap<T extends Record<string, FacetAttribute>> extends FacetAttribute<
-  InferInput<T>,
-  AttributeValue.MMember
-> {
-  private attributes: T;
-
-  constructor(attributes: T) {
-    super();
-    this.attributes = attributes;
-  }
-
-  private getRequiredFields() {
-    return new Set(
-      Object.entries(this.attributes).flatMap(([key, value]) =>
-        value instanceof FacetOptional ? [] : [key],
-      ),
-    );
-  }
-
-  serialize(input: unknown) {
-    if (!input || typeof input !== "object") throw new TypeError();
-
-    const requiredFields = this.getRequiredFields();
-
-    const serialized = Object.entries(input).reduce((acc, [key, value]) => {
-      requiredFields.delete(key);
-
-      const attr = this.attributes[key];
-      if (!attr) throw new TypeError(`Unexpected attribute: ${key}`);
-
-      const serialized = attr.serialize(value);
-      if (serialized === undefined) return acc;
-
-      return { ...acc, [key]: serialized };
-    }, {});
-
-    if (requiredFields.size > 0)
-      throw new Error(
-        `Missing required fields: ${[...requiredFields.values()].join(", ")}`,
-      );
-
-    return { M: serialized };
-  }
-
-  deserialize(av: AttributeValue) {
-    if (av.M === undefined) throw new TypeError();
-
-    const requiredFields = this.getRequiredFields();
-
-    const deserialized = Object.entries(av.M).reduce((acc, [key, value]) => {
-      requiredFields.delete(key);
-
-      const attr = this.attributes[key];
-      if (!attr) throw new TypeError(`Unexpected attribute: ${key}`);
-
-      const deserialized = attr.deserialize(value);
-      if (deserialized === undefined) return acc;
-
-      return { ...acc, [key]: deserialized };
-    }, {});
-
-    if (requiredFields.size > 0)
-      throw new Error(
-        `Missing required fields: ${[...requiredFields.values()].join(", ")}`,
-      );
-
-    return deserialized as this["_"]["input"];
-  }
-}
-
-class FacetStringSet extends FacetAttribute<
-  Set<string>,
-  AttributeValue.SSMember
-> {
-  serialize(input: unknown) {
-    if (!(input instanceof Set)) throw new TypeError();
-
-    const values: string[] = [];
-    for (const value of input.values()) {
-      if (typeof value !== "string") throw new TypeError();
-      values.push(value);
-    }
-
-    return { SS: values };
-  }
-
-  deserialize(av: AttributeValue) {
-    if (av.SS === undefined) throw new TypeError();
-    return new Set(av.SS);
-  }
-}
-
-class FacetNumberSet extends FacetAttribute<
-  Set<number>,
-  AttributeValue.NSMember
-> {
-  serialize(input: unknown) {
-    if (!(input instanceof Set)) throw new TypeError();
-
-    const values: string[] = [];
-    for (const value of input.values()) {
-      if (typeof value !== "number") throw new TypeError();
-      values.push(value.toString());
-    }
-
-    return { NS: values };
-  }
-
-  deserialize(av: AttributeValue) {
-    if (av.NS === undefined) throw new TypeError();
-    return new Set(av.NS.map((item) => parseFloat(item)));
-  }
-}
-
-class FacetBinarySet extends FacetAttribute<
-  Set<Uint8Array>,
-  AttributeValue.BSMember
-> {
-  serialize(input: unknown) {
-    if (!(input instanceof Set)) throw new TypeError();
-
-    const values: Uint8Array[] = [];
-    for (const value of input.values()) {
-      if (!(value instanceof Uint8Array)) throw new TypeError();
-      values.push(value);
-    }
-
-    return { BS: values };
-  }
-
-  deserialize(av: AttributeValue) {
-    if (av.BS === undefined) throw new TypeError();
-    return new Set(av.BS);
-  }
-}
-
-class FacetUnion<T extends FacetAttribute[]> extends FacetAttribute<
-  T[number]["_"]["input"],
-  T[number]["_"]["output"]
-> {
-  private attributes: T;
-
-  constructor(attributes: [...T]) {
-    super();
-    this.attributes = attributes;
-  }
-
-  serialize(input: unknown) {
-    // TODO: Implement
-    return {} as any;
-  }
-
-  deserialize(av: any) {
-    // TODO: Implement
-    return {} as any;
-  }
-}
-
 export const f = {
-  // Scalar types
   string: () => new FacetString(),
-  number: () => new FacetNumber(),
-  binary: () => new FacetBinary(),
-  boolean: () => new FacetBoolean(),
-
-  // Document types
-  list: <T extends FacetAttribute>(attribute: T) => new FacetList(attribute),
-  map: <T extends Record<string, FacetAttribute>>(attributes: T) =>
-    new FacetMap(attributes),
-
-  // Set types
-  stringSet: () => new FacetStringSet(),
-  numberSet: () => new FacetNumberSet(),
-  binarySet: () => new FacetBinarySet(),
-
-  // Meta types
-  union: <T extends FacetAttribute[]>(attributes: [...T]) =>
-    new FacetUnion(attributes),
 };
-
-type RequiredKeys<T extends object> = {
-  [K in keyof T]: undefined extends T[K] ? never : K;
-}[keyof T];
-
-type AddQuestionMarks<
-  T extends object,
-  R extends keyof T = RequiredKeys<T>,
-> = Pick<Required<T>, R> & Partial<T>;
-
-type InferInput<T extends Record<string, FacetAttribute>> = AddQuestionMarks<{
-  [K in keyof T]: T[K]["_"]["input"];
-}>;
