@@ -15,14 +15,14 @@ class Table {
     this.name = name;
   }
 
-  entity<T extends Record<string, FacetAttribute | FacetAttributeValue>>(opts: {
+  entity<T extends Record<string, BaseFacetAttribute>>(opts: {
     attributes: T;
   }): Entity<T> {
     return new Entity(opts.attributes, this);
   }
 }
 
-class Entity<T extends Record<string, FacetAttribute | FacetAttributeValue>> {
+class Entity<T extends Record<string, BaseFacetAttribute>> {
   private attributes: T;
   private table: Table;
 
@@ -30,7 +30,24 @@ class Entity<T extends Record<string, FacetAttribute | FacetAttributeValue>> {
     this.attributes = attributes;
     this.table = table;
   }
+
+  async create(input: InferInput<T>) {}
 }
+
+type InferInput<T extends Record<string, BaseFacetAttribute>> = {
+  [K in keyof T]: InferInputValue<T[K]>;
+};
+
+type InferInputValue<T extends BaseFacetAttribute> =
+  T extends FacetAttributeWithProps<infer U, infer P>
+    ? ApplyProps<U extends FacetMap<infer M> ? InferInput<M> : U["_type"], P>
+    : T extends FacetMap<infer M>
+    ? InferInput<M>
+    : T["_type"];
+
+type ApplyProps<T, U extends AttributeProps> = U["required"] extends true
+  ? T
+  : T | undefined;
 
 export function createTable(opts: { name: string }): Table {
   return new Table(opts.name);
@@ -49,22 +66,24 @@ type UpdateProps<
   U extends Partial<AttributeProps>,
 > = Omit<T, keyof U> & U;
 
-/**
- * FacetAttribute is a wrapper over a DynamoDB attribute value. It adds support
- * for optional, read-only, and default values.
- */
-class FacetAttribute<
-  T extends FacetAttributeValue = any,
-  U extends AttributeProps = any,
-> {
-  declare _type: T["_type"];
+abstract class BaseFacetAttribute<T = any> {
+  declare _type: T;
 
+  abstract serialize(input: unknown): AttributeValue;
+  abstract deserialize(av: AttributeValue): T;
+}
+
+class FacetAttributeWithProps<
+  T extends FacetAttribute,
+  U extends AttributeProps,
+> extends BaseFacetAttribute<T["_type"]> {
   private attribute: T;
   private props: U;
 
   private defaultValue?: DefaultValue<T["_type"]>;
 
   constructor(attribute: T, props: U, defaultValue?: DefaultValue<T["_type"]>) {
+    super();
     this.attribute = attribute;
     this.props = props;
     this.defaultValue = defaultValue;
@@ -78,61 +97,46 @@ class FacetAttribute<
     return this.attribute.deserialize(av);
   }
 
-  optional(): FacetAttribute<T, UpdateProps<U, { required: false }>> {
+  optional(): FacetAttributeWithProps<T, UpdateProps<U, { required: false }>> {
     this.props.required = false;
     return this as ReturnType<this["optional"]>;
   }
 
-  readOnly(): FacetAttribute<T, UpdateProps<U, { readOnly: true }>> {
+  readOnly(): FacetAttributeWithProps<T, UpdateProps<U, { readOnly: true }>> {
     this.props.readOnly = true;
     return this as ReturnType<this["readOnly"]>;
   }
 
   default(
     value: DefaultValue<T["_type"]>,
-  ): FacetAttribute<T, UpdateProps<U, { default: true }>> {
+  ): FacetAttributeWithProps<T, UpdateProps<U, { default: true }>> {
     this.defaultValue = value;
     this.props.default = true;
     return this as ReturnType<this["default"]>;
   }
 }
 
-/**
- * FacetAttributeValue represents a DynamoDB AttributeValue. It wraps a
- * primitive value type that knows how to serialize and deserialize to the
- * DynamoDB table.
- *
- * It is commonly wrapped by a `FacetAttribute` to provide information
- * additional metadata about the attribute, but this is not necessary. Methods
- * are provided on this class that will convert this type to the wrapper type
- * automatically.
- */
-abstract class FacetAttributeValue<T = any> {
-  declare _type: T;
-
-  abstract serialize(input: unknown): AttributeValue;
-  abstract deserialize(input: AttributeValue): T;
-
+abstract class FacetAttribute<T = any> extends BaseFacetAttribute<T> {
   list(): FacetList<this> {
     return new FacetList(this);
   }
 
-  optional(): FacetAttribute<
+  optional(): FacetAttributeWithProps<
     this,
     { required: false; readOnly: false; default: false }
   > {
-    return new FacetAttribute(this, {
+    return new FacetAttributeWithProps(this, {
       required: false,
       readOnly: false,
       default: false,
     });
   }
 
-  readOnly(): FacetAttribute<
+  readOnly(): FacetAttributeWithProps<
     this,
     { required: true; readOnly: true; default: false }
   > {
-    return new FacetAttribute(this, {
+    return new FacetAttributeWithProps(this, {
       required: true,
       readOnly: true,
       default: false,
@@ -141,8 +145,11 @@ abstract class FacetAttributeValue<T = any> {
 
   default(
     value: DefaultValue<T>,
-  ): FacetAttribute<this, { required: true; readOnly: false; default: true }> {
-    return new FacetAttribute(
+  ): FacetAttributeWithProps<
+    this,
+    { required: true; readOnly: false; default: true }
+  > {
+    return new FacetAttributeWithProps(
       this,
       {
         required: true,
@@ -154,7 +161,7 @@ abstract class FacetAttributeValue<T = any> {
   }
 }
 
-class FacetString extends FacetAttributeValue<string> {
+class FacetString extends FacetAttribute<string> {
   serialize(input: unknown) {
     if (typeof input !== "string") throw new TypeError();
     return { S: input };
@@ -166,7 +173,7 @@ class FacetString extends FacetAttributeValue<string> {
   }
 }
 
-class FacetNumber extends FacetAttributeValue<number> {
+class FacetNumber extends FacetAttribute<number> {
   serialize(input: unknown) {
     if (typeof input !== "number") throw new TypeError();
     return { N: input.toString() };
@@ -178,7 +185,7 @@ class FacetNumber extends FacetAttributeValue<number> {
   }
 }
 
-class FacetBinary extends FacetAttributeValue<Uint8Array> {
+class FacetBinary extends FacetAttribute<Uint8Array> {
   serialize(input: unknown) {
     if (!(input instanceof Uint8Array)) throw new TypeError();
     return { B: input };
@@ -190,7 +197,7 @@ class FacetBinary extends FacetAttributeValue<Uint8Array> {
   }
 }
 
-class FacetBoolean extends FacetAttributeValue<boolean> {
+class FacetBoolean extends FacetAttribute<boolean> {
   serialize(input: unknown) {
     if (typeof input !== "boolean") throw new TypeError();
     return { BOOL: input };
@@ -202,9 +209,7 @@ class FacetBoolean extends FacetAttributeValue<boolean> {
   }
 }
 
-class FacetList<T extends FacetAttributeValue> extends FacetAttributeValue<
-  T["_type"][]
-> {
+class FacetList<T extends FacetAttribute> extends FacetAttribute<T["_type"][]> {
   private attribute: T;
 
   constructor(attribute: T) {
@@ -224,8 +229,10 @@ class FacetList<T extends FacetAttributeValue> extends FacetAttributeValue<
 }
 
 class FacetMap<
-  T extends Record<string, FacetAttribute | FacetAttributeValue>,
-> extends FacetAttributeValue<{ [K in keyof T]: T[K]["_type"] }> {
+  T extends Record<string, BaseFacetAttribute>,
+> extends FacetAttribute<{
+  [K in keyof T]: T[K]["_type"];
+}> {
   private attributes: T;
 
   constructor(attributes: T) {
@@ -266,7 +273,7 @@ class FacetMap<
   }
 }
 
-class FacetStringSet extends FacetAttributeValue<Set<string>> {
+class FacetStringSet extends FacetAttribute<Set<string>> {
   serialize(input: unknown) {
     if (!(input instanceof Set)) throw new TypeError();
 
@@ -285,7 +292,7 @@ class FacetStringSet extends FacetAttributeValue<Set<string>> {
   }
 }
 
-class FacetNumberSet extends FacetAttributeValue<Set<number>> {
+class FacetNumberSet extends FacetAttribute<Set<number>> {
   serialize(input: unknown) {
     if (!(input instanceof Set)) throw new TypeError();
 
@@ -304,7 +311,7 @@ class FacetNumberSet extends FacetAttributeValue<Set<number>> {
   }
 }
 
-class FacetBinarySet extends FacetAttributeValue<Set<Uint8Array>> {
+class FacetBinarySet extends FacetAttribute<Set<Uint8Array>> {
   serialize(input: unknown) {
     if (!(input instanceof Set)) throw new TypeError();
 
@@ -331,11 +338,9 @@ export const f = {
   boolean: () => new FacetBoolean(),
 
   // Document types
-  list: <T extends FacetAttributeValue>(attribute: T) =>
-    new FacetList(attribute),
-  map: <T extends Record<string, FacetAttribute | FacetAttributeValue>>(
-    attributes: T,
-  ) => new FacetMap(attributes),
+  list: <T extends FacetAttribute>(attribute: T) => new FacetList(attribute),
+  map: <T extends Record<string, BaseFacetAttribute>>(attributes: T) =>
+    new FacetMap(attributes),
 
   // Set types
   stringSet: () => new FacetStringSet(),
