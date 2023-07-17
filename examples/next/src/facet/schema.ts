@@ -9,9 +9,14 @@ export const users = table.entity({
     PK: f.string(),
     SK: f.string(),
 
-    id: f.string(),
-
-    email: f.string(),
+    deeply: f.map({
+      nested: f.map({
+        property: f.map({
+          example: f.string(),
+          other: f.number().optional(),
+        }),
+      }),
+    }),
   },
 });
 
