@@ -15,14 +15,14 @@ class Table {
     this.name = name;
   }
 
-  entity<T extends Record<string, BaseFacetAttribute>>(opts: {
+  entity<T extends Record<string, BaseFacetAttribute<any>>>(opts: {
     attributes: T;
   }): Entity<T> {
     return new Entity(opts.attributes, this);
   }
 }
 
-class Entity<T extends Record<string, BaseFacetAttribute>> {
+class Entity<T extends Record<string, BaseFacetAttribute<any>>> {
   private attributes: T;
   private table: Table;
 
@@ -30,24 +30,7 @@ class Entity<T extends Record<string, BaseFacetAttribute>> {
     this.attributes = attributes;
     this.table = table;
   }
-
-  async create(input: InferInput<T>) {}
 }
-
-type InferInput<T extends Record<string, BaseFacetAttribute>> = {
-  [K in keyof T]: InferInputValue<T[K]>;
-};
-
-type InferInputValue<T extends BaseFacetAttribute> =
-  T extends FacetAttributeWithProps<infer U, infer P>
-    ? ApplyProps<U extends FacetMap<infer M> ? InferInput<M> : U["_type"], P>
-    : T extends FacetMap<infer M>
-    ? InferInput<M>
-    : T["_type"];
-
-type ApplyProps<T, U extends AttributeProps> = U["required"] extends true
-  ? T
-  : T | undefined;
 
 export function createTable(opts: { name: string }): Table {
   return new Table(opts.name);
@@ -66,7 +49,7 @@ type UpdateProps<
   U extends Partial<AttributeProps>,
 > = Omit<T, keyof U> & U;
 
-abstract class BaseFacetAttribute<T = any> {
+abstract class BaseFacetAttribute<T> {
   declare _type: T;
 
   abstract serialize(input: unknown): AttributeValue;
@@ -74,15 +57,17 @@ abstract class BaseFacetAttribute<T = any> {
 }
 
 class FacetAttributeWithProps<
-  T extends FacetAttribute,
-  U extends AttributeProps,
-> extends BaseFacetAttribute<T["_type"]> {
+  T extends FacetAttribute<any>,
+  P extends AttributeProps,
+> extends BaseFacetAttribute<
+  P["required"] extends true ? T["_type"] : T["_type"] | undefined
+> {
   private attribute: T;
-  private props: U;
+  private props: P;
 
   private defaultValue?: DefaultValue<T["_type"]>;
 
-  constructor(attribute: T, props: U, defaultValue?: DefaultValue<T["_type"]>) {
+  constructor(attribute: T, props: P, defaultValue?: DefaultValue<T["_type"]>) {
     super();
     this.attribute = attribute;
     this.props = props;
@@ -97,26 +82,26 @@ class FacetAttributeWithProps<
     return this.attribute.deserialize(av);
   }
 
-  optional(): FacetAttributeWithProps<T, UpdateProps<U, { required: false }>> {
+  optional(): FacetAttributeWithProps<T, UpdateProps<P, { required: false }>> {
     this.props.required = false;
     return this as ReturnType<this["optional"]>;
   }
 
-  readOnly(): FacetAttributeWithProps<T, UpdateProps<U, { readOnly: true }>> {
+  readOnly(): FacetAttributeWithProps<T, UpdateProps<P, { readOnly: true }>> {
     this.props.readOnly = true;
     return this as ReturnType<this["readOnly"]>;
   }
 
   default(
     value: DefaultValue<T["_type"]>,
-  ): FacetAttributeWithProps<T, UpdateProps<U, { default: true }>> {
+  ): FacetAttributeWithProps<T, UpdateProps<P, { default: true }>> {
     this.defaultValue = value;
     this.props.default = true;
     return this as ReturnType<this["default"]>;
   }
 }
 
-abstract class FacetAttribute<T = any> extends BaseFacetAttribute<T> {
+abstract class FacetAttribute<T> extends BaseFacetAttribute<T> {
   list(): FacetList<this> {
     return new FacetList(this);
   }
@@ -209,7 +194,9 @@ class FacetBoolean extends FacetAttribute<boolean> {
   }
 }
 
-class FacetList<T extends FacetAttribute> extends FacetAttribute<T["_type"][]> {
+class FacetList<T extends FacetAttribute<any>> extends FacetAttribute<
+  T["_type"][]
+> {
   private attribute: T;
 
   constructor(attribute: T) {
@@ -229,9 +216,13 @@ class FacetList<T extends FacetAttribute> extends FacetAttribute<T["_type"][]> {
 }
 
 class FacetMap<
-  T extends Record<string, BaseFacetAttribute>,
+  T extends Record<string, BaseFacetAttribute<any>>,
 > extends FacetAttribute<{
-  [K in keyof T]: T[K]["_type"];
+  [K in keyof T]: T[K] extends FacetAttributeWithProps<any, infer P>
+    ? P["required"] extends true
+      ? T[K]["_type"]
+      : T[K]["_type"] | undefined
+    : T[K]["_type"];
 }> {
   private attributes: T;
 
@@ -269,7 +260,7 @@ class FacetMap<
       return { ...acc, [key]: deserialized };
     }, {});
 
-    return deserialized as { [K in keyof T]: T[K]["_type"] };
+    return deserialized as any;
   }
 }
 
@@ -338,8 +329,9 @@ export const f = {
   boolean: () => new FacetBoolean(),
 
   // Document types
-  list: <T extends FacetAttribute>(attribute: T) => new FacetList(attribute),
-  map: <T extends Record<string, BaseFacetAttribute>>(attributes: T) =>
+  list: <T extends FacetAttribute<any>>(attribute: T) =>
+    new FacetList(attribute),
+  map: <T extends Record<string, BaseFacetAttribute<any>>>(attributes: T) =>
     new FacetMap(attributes),
 
   // Set types

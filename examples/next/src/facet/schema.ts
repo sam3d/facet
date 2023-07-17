@@ -9,36 +9,15 @@ export const users = table.entity({
     PK: f.string(),
     SK: f.string(),
 
-    deeply: f
-      .map({
-        nested: f.map({
-          property: f.map({
-            example: f.string(),
-            other: f.number().optional(),
-          }),
+    deeply: f.map({
+      nested: f.map({
+        property: f.map({
+          example: f.string(),
+          other: f.number().optional(),
         }),
-      })
-      .optional(),
+      }),
+    }),
   },
 });
 
-(async () => {
-  users.create({
-    PK: "test",
-    SK: "test",
-    deeply: undefined,
-  });
-
-  users.create({
-    PK: "test",
-    SK: "test",
-    deeply: {
-      nested: {
-        property: {
-          example: "test",
-          other: undefined,
-        },
-      },
-    },
-  });
-})();
+(async () => {})();
