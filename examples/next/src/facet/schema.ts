@@ -5,6 +5,8 @@ const table = createTable({
 });
 
 export const users = table.entity({
+  name: "user",
+
   attributes: {
     PK: f.string(),
     SK: f.string(),

@@ -15,18 +15,24 @@ class Table {
     this.name = name;
   }
 
-  entity<T extends Record<string, BaseFacetAttribute<any>>>(opts: {
-    attributes: T;
-  }): Entity<T> {
-    return new Entity(opts.attributes, this);
+  entity<
+    Name extends string,
+    T extends Record<string, BaseFacetAttribute<any>>,
+  >(opts: { name: Name; attributes: T }): Entity<Name, T> {
+    return new Entity(opts.name, opts.attributes, this);
   }
 }
 
-class Entity<T extends Record<string, BaseFacetAttribute<any>>> {
+class Entity<
+  Name extends string,
+  T extends Record<string, BaseFacetAttribute<any>>,
+> {
+  private name: Name;
   private attributes: T;
   private table: Table;
 
-  constructor(attributes: T, table: Table) {
+  constructor(name: Name, attributes: T, table: Table) {
+    this.name = name;
     this.attributes = attributes;
     this.table = table;
   }
