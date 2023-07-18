@@ -8,6 +8,34 @@ const client = new DynamoDB({
   },
 });
 
+type ReadOnlyPick<T extends Record<string, BaseFacetAttribute<any>>> = {
+  [K in keyof T as T[K] extends FacetAttributeWithProps<any, infer P>
+    ? P["readOnly"] extends true
+      ? K
+      : never
+    : never]?: UnwrapProps<T[K]> extends FacetMap<infer U>
+    ? ReadOnlyPick<U> | true
+    : true;
+};
+
+type UnwrapProps<T extends BaseFacetAttribute<any>> =
+  T extends FacetAttributeWithProps<infer U, any> ? U : T;
+
+type ReadOnlyMask<
+  T extends Record<string, BaseFacetAttribute<any>>,
+  U extends ReadOnlyPick<T>,
+> = {
+  [K in keyof U]: U[K];
+};
+
+type EntityPrimaryKey<
+  T extends Record<string, BaseFacetAttribute<any>>,
+  U extends ReadOnlyPick<T> = ReadOnlyPick<T>,
+> = {
+  needs: U;
+  compute: (entity: ReadOnlyMask<T, U>) => { PK: string; SK: string };
+};
+
 class Table {
   private name: string;
 
@@ -18,7 +46,11 @@ class Table {
   entity<
     Name extends string,
     T extends Record<string, BaseFacetAttribute<any>>,
-  >(opts: { name: Name; attributes: T }): Entity<Name, T> {
+  >(opts: {
+    name: Name;
+    attributes: T;
+    primaryKey: EntityPrimaryKey<T>;
+  }): Entity<Name, T> {
     return new Entity(opts.name, opts.attributes, this);
   }
 }
