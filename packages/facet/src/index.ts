@@ -8,13 +8,27 @@ const client = new DynamoDB({
   },
 });
 
+/**
+ * A map is the only kind of attribute that can also contain other attributes
+ * that are read-only (i.e. a FacetAttributeWithProps). Read-only maps (which
+ * cannot be reassigned) are the only type to have interior mutability (i.e.
+ * organization ID is immutable, but the name is mutable).
+ *
+ * For primary key selection, you cannot select a whole read-only map attribute
+ * as a dependency. Otherwise, internal mutable properties may change (as
+ * above). Instead, maps must be recursed into for another read-only property to
+ * select. This is also how read-only properties behave in typescript.
+ *
+ * // TODO: Consider marking read-only properties in maps using the `readonly`
+ * keyword (similar to adding question marks to `undefined`).
+ */
 type ReadOnlyPick<T extends Record<string, BaseFacetAttribute<any>>> = {
   [K in keyof T as T[K] extends FacetAttributeWithProps<any, infer P>
     ? P["readOnly"] extends true
       ? K
       : never
     : never]?: UnwrapProps<T[K]> extends FacetMap<infer U>
-    ? ReadOnlyPick<U> | true
+    ? ReadOnlyPick<U>
     : true;
 };
 

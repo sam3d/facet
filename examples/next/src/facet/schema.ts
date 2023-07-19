@@ -16,18 +16,16 @@ export const organizations = table.entity({
 
     createdAt: f.string().default(() => new Date().toISOString()),
 
-    deeply: f.map({
-      nested: f.map({
-        property: f.map({
-          example: f.string().readOnly(),
-          other: f.string().optional(),
-        }),
-      }),
-    }),
+    organization: f
+      .map({
+        id: f.string().readOnly(),
+        name: f.string().optional(),
+      })
+      .readOnly(),
   },
 
   primaryKey: {
-    needs: { id: true },
+    needs: { id: true, organization: { id: true } },
     compute(org) {
       return { PK: "", SK: "" };
     },
