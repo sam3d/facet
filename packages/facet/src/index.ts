@@ -36,6 +36,15 @@ type EntityPrimaryKey<
   compute: (entity: ReadOnlyMask<T, U>) => { PK: string; SK: string };
 };
 
+type RequiredKeys<T extends object> = {
+  [K in keyof T]: undefined extends T[K] ? never : K;
+}[keyof T];
+
+type AddQuestionMarks<
+  T extends object,
+  R extends keyof T = RequiredKeys<T>,
+> = Pick<Required<T>, R> & Partial<T>;
+
 class Table {
   private name: string;
 
@@ -69,16 +78,15 @@ class Entity<
     this.table = table;
   }
 
-  serialize(input: { [K in keyof T]: T[K]["_type"] }): Record<
-    string,
-    AttributeValue
-  > {
+  serialize(
+    input: AddQuestionMarks<{ [K in keyof T]: T[K]["_type"] }>,
+  ): Record<string, AttributeValue> {
     return new FacetMap(this.attributes).serialize(input).M;
   }
 
-  deserialize(av: Record<string, AttributeValue>): {
-    [K in keyof T]: T[K]["_type"];
-  } {
+  deserialize(
+    av: Record<string, AttributeValue>,
+  ): AddQuestionMarks<{ [K in keyof T]: T[K]["_type"] }> {
     return new FacetMap(this.attributes).deserialize({ M: av });
   }
 }
@@ -270,7 +278,7 @@ class FacetList<T extends FacetAttribute<any>> extends FacetAttribute<
 
 class FacetMap<
   T extends Record<string, BaseFacetAttribute<any>>,
-> extends FacetAttribute<{ [K in keyof T]: T[K]["_type"] }> {
+> extends FacetAttribute<AddQuestionMarks<{ [K in keyof T]: T[K]["_type"] }>> {
   private attributes: T;
 
   constructor(attributes: T) {
