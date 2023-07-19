@@ -137,12 +137,12 @@ class FacetAttributeWithProps<
     return !this.props.required;
   }
 
-  serialize(input: unknown): AttributeValue | undefined {
+  serialize(input: unknown) {
     if (!this.props.required && input === undefined) return undefined;
     return this.attribute.serialize(input);
   }
 
-  deserialize(av: AttributeValue): T["_type"] | undefined {
+  deserialize(av: AttributeValue) {
     if (!this.props.required && av === undefined) return undefined;
     return this.attribute.deserialize(av);
   }
