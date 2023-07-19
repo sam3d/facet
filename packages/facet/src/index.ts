@@ -270,13 +270,7 @@ class FacetList<T extends FacetAttribute<any>> extends FacetAttribute<
 
 class FacetMap<
   T extends Record<string, BaseFacetAttribute<any>>,
-> extends FacetAttribute<{
-  [K in keyof T]: T[K] extends FacetAttributeWithProps<any, infer P>
-    ? P["required"] extends true
-      ? T[K]["_type"]
-      : T[K]["_type"] | undefined
-    : T[K]["_type"];
-}> {
+> extends FacetAttribute<{ [K in keyof T]: T[K]["_type"] }> {
   private attributes: T;
 
   constructor(attributes: T) {
