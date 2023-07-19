@@ -148,21 +148,29 @@ class FacetAttributeWithProps<
   }
 
   optional(): FacetAttributeWithProps<T, UpdateProps<P, { required: false }>> {
-    this.props.required = false;
-    return this as ReturnType<this["optional"]>;
+    return new FacetAttributeWithProps(
+      this.attribute,
+      { ...this.props, required: false },
+      this.defaultValue,
+    );
   }
 
   readOnly(): FacetAttributeWithProps<T, UpdateProps<P, { readOnly: true }>> {
-    this.props.readOnly = true;
-    return this as ReturnType<this["readOnly"]>;
+    return new FacetAttributeWithProps(
+      this.attribute,
+      { ...this.props, readOnly: true },
+      this.defaultValue,
+    );
   }
 
   default(
     value: DefaultValue<T["_type"]>,
   ): FacetAttributeWithProps<T, UpdateProps<P, { default: true }>> {
-    this.defaultValue = value;
-    this.props.default = true;
-    return this as ReturnType<this["default"]>;
+    return new FacetAttributeWithProps(
+      this.attribute,
+      { ...this.props, default: true },
+      value,
+    );
   }
 }
 
