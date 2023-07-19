@@ -133,6 +133,10 @@ class FacetAttributeWithProps<
     this.defaultValue = defaultValue;
   }
 
+  get isOptional() {
+    return !this.props.required;
+  }
+
   serialize(input: unknown): AttributeValue | undefined {
     if (!this.props.required && input === undefined) return undefined;
     return this.attribute.serialize(input);
@@ -286,10 +290,23 @@ class FacetMap<
     this.attributes = attributes;
   }
 
+  private getRequiredAttributes() {
+    const keys = Object.entries(this.attributes).flatMap(([key, attr]) =>
+      !(attr instanceof FacetAttributeWithProps) || !attr.isOptional
+        ? [key]
+        : [],
+    );
+    return new Set(keys);
+  }
+
   serialize(input: unknown) {
     if (!input || typeof input !== "object") throw new TypeError();
 
+    const requiredAttrs = this.getRequiredAttributes();
+
     const serialized = Object.entries(input).reduce((acc, [key, value]) => {
+      requiredAttrs.delete(key);
+
       const attr = this.attributes[key];
       if (!attr) throw new TypeError(`Unexpected attribute: ${key}`);
 
@@ -299,13 +316,23 @@ class FacetMap<
       return { ...acc, [key]: serialized };
     }, {});
 
+    if (requiredAttrs.size > 0)
+      throw new Error(
+        "Missing required attributes: " +
+          [...requiredAttrs.values()].join(", "),
+      );
+
     return { M: serialized };
   }
 
   deserialize(av: AttributeValue) {
     if (av.M === undefined) throw new TypeError();
 
+    const requiredAttrs = this.getRequiredAttributes();
+
     const deserialized = Object.entries(av.M).reduce((acc, [key, value]) => {
+      requiredAttrs.delete(key);
+
       const attr = this.attributes[key];
       if (!attr) throw new TypeError(`Unexpected attribute: ${key}`);
 
@@ -314,6 +341,12 @@ class FacetMap<
 
       return { ...acc, [key]: deserialized };
     }, {});
+
+    if (requiredAttrs.size > 0)
+      throw new Error(
+        "Missing required attributes: " +
+          [...requiredAttrs.values()].join(", "),
+      );
 
     return deserialized as this["_type"];
   }
