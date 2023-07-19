@@ -143,7 +143,6 @@ class FacetAttributeWithProps<
   }
 
   deserialize(av: AttributeValue) {
-    if (!this.props.required && av === undefined) return undefined;
     return this.attribute.deserialize(av);
   }
 
