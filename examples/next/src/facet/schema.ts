@@ -41,7 +41,15 @@ export const users = table.entity({
     id: f.string().default(generateId).readOnly(),
     name: f.string(),
     email: f.string(),
-    organizationId: f.string(),
+    organizationId: f.string().optional(),
+
+    deeply: f
+      .map({
+        nested: f.map({
+          list: f.stringSet().list().optional(),
+        }),
+      })
+      .optional(),
 
     createdAt: f.string().default(() => new Date().toISOString()),
   },
@@ -54,4 +62,14 @@ export const users = table.entity({
   },
 });
 
-(async () => {})();
+(async () => {
+  const user = users.serialize({
+    id: await generateId(),
+    name: "Test User",
+    email: "test.user@gmail.com",
+    deeply: { nested: { list: [new Set(["test"])] } },
+    createdAt: new Date().toISOString(),
+  });
+
+  console.log(JSON.stringify(user, null, 4), users.deserialize(user));
+})();

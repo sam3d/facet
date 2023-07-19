@@ -68,6 +68,19 @@ class Entity<
     this.attributes = attributes;
     this.table = table;
   }
+
+  serialize(input: { [K in keyof T]: T[K]["_type"] }): Record<
+    string,
+    AttributeValue
+  > {
+    return new FacetMap(this.attributes).serialize(input).M;
+  }
+
+  deserialize(av: Record<string, AttributeValue>): {
+    [K in keyof T]: T[K]["_type"];
+  } {
+    return new FacetMap(this.attributes).deserialize({ M: av });
+  }
 }
 
 export function createTable(opts: { name: string }): Table {
@@ -90,7 +103,7 @@ type UpdateProps<
 abstract class BaseFacetAttribute<T> {
   declare _type: T;
 
-  abstract serialize(input: unknown): AttributeValue;
+  abstract serialize(input: unknown): AttributeValue | undefined;
   abstract deserialize(av: AttributeValue): T;
 }
 
@@ -112,11 +125,13 @@ class FacetAttributeWithProps<
     this.defaultValue = defaultValue;
   }
 
-  serialize(input: unknown): AttributeValue {
+  serialize(input: unknown): AttributeValue | undefined {
+    if (!this.props.required && input === undefined) return undefined;
     return this.attribute.serialize(input);
   }
 
-  deserialize(av: AttributeValue): T["_type"] {
+  deserialize(av: AttributeValue): T["_type"] | undefined {
+    if (!this.props.required && av === undefined) return undefined;
     return this.attribute.deserialize(av);
   }
 
@@ -244,7 +259,7 @@ class FacetList<T extends FacetAttribute<any>> extends FacetAttribute<
 
   serialize(input: unknown) {
     if (!Array.isArray(input)) throw new TypeError();
-    return { L: input.map((item) => this.attribute.serialize(item)) };
+    return { L: input.map((item) => this.attribute.serialize(item)!) };
   }
 
   deserialize(av: AttributeValue) {
