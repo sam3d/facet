@@ -3,6 +3,16 @@ import KSUID from "ksuid";
 
 const generateId = async () => (await KSUID.random()).string;
 
+function compose(prefix: string | string[], params?: Record<string, string>) {
+  return (
+    "$" +
+    [
+      ...(Array.isArray(prefix) ? prefix : [prefix]),
+      ...Object.entries(params ?? {}).map((param) => param.join("_")),
+    ].join("#")
+  );
+}
+
 const table = createTable({
   name: "Facet",
 });
@@ -26,8 +36,13 @@ export const users = table.entity({
   },
 
   primaryKey: {
-    needs: { id: true, organization: { id: true } },
-    compute: (user) => ({ PK: "", SK: "" }),
+    needs: { id: true },
+    compute({ id }) {
+      return {
+        PK: compose("user", { id }),
+        SK: compose("user"),
+      };
+    },
   },
 });
 

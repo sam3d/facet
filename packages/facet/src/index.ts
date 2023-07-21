@@ -37,7 +37,10 @@ type UnwrapProps<T extends BaseFacetAttribute<any>> =
 
 type EntityPrimaryKey<T extends Record<string, BaseFacetAttribute<any>>> = {
   needs: ReadOnlyPick<T>;
-  compute: (entity: T) => { PK: string; SK: string };
+  compute: (entity: AddQuestionMarks<{ [K in keyof T]: T[K]["_output"] }>) => {
+    PK: string;
+    SK: string;
+  };
 };
 
 type RequiredKeys<T extends object> = {
