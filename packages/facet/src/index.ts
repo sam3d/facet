@@ -32,22 +32,24 @@ type ReadOnlyPick<T extends Record<string, BaseFacetAttribute<any>>> = {
     : true;
 };
 
+type InferInputMap<T extends Record<string, BaseFacetAttribute<any>>> =
+  AddQuestionMarks<{
+    [K in keyof T]: T[K] extends FacetAttributeWithProps<infer U, infer P>
+      ?
+          | (U extends FacetMap<infer M> ? InferInputMap<M> : U["_type"])
+          | (P["required"] extends false ? undefined : never)
+          | (P["default"] extends true ? undefined : never)
+      : T[K] extends FacetMap<infer M>
+      ? InferInputMap<M>
+      : T[K]["_type"];
+  }>;
+
 type UnwrapProps<T extends BaseFacetAttribute<any>> =
   T extends FacetAttributeWithProps<infer U, any> ? U : T;
 
-type ReadOnlyMask<
-  T extends Record<string, BaseFacetAttribute<any>>,
-  U extends ReadOnlyPick<T>,
-> = {
-  [K in keyof U]: U[K];
-};
-
-type EntityPrimaryKey<
-  T extends Record<string, BaseFacetAttribute<any>>,
-  U extends ReadOnlyPick<T> = ReadOnlyPick<T>,
-> = {
-  needs: U;
-  compute: (entity: ReadOnlyMask<T, U>) => { PK: string; SK: string };
+type EntityPrimaryKey<T extends Record<string, BaseFacetAttribute<any>>> = {
+  needs: ReadOnlyPick<T>;
+  compute: (entity: T) => { PK: string; SK: string };
 };
 
 type RequiredKeys<T extends object> = {
@@ -92,17 +94,7 @@ class Entity<
     this.table = table;
   }
 
-  serialize(
-    input: AddQuestionMarks<{ [K in keyof T]: T[K]["_type"] }>,
-  ): Record<string, AttributeValue> {
-    return new FacetMap(this.attributes).serialize(input).M;
-  }
-
-  deserialize(
-    av: Record<string, AttributeValue>,
-  ): AddQuestionMarks<{ [K in keyof T]: T[K]["_type"] }> {
-    return new FacetMap(this.attributes).deserialize({ M: av });
-  }
+  async create(input: InferInputMap<T>) {}
 }
 
 export function createTable(opts: { name: string }): Table {
@@ -132,9 +124,7 @@ abstract class BaseFacetAttribute<T> {
 class FacetAttributeWithProps<
   T extends FacetAttribute<any>,
   P extends AttributeProps,
-> extends BaseFacetAttribute<
-  P["required"] extends true ? T["_type"] : T["_type"] | undefined
-> {
+> extends BaseFacetAttribute<T["_type"]> {
   private attribute: T;
   private props: P;
 
@@ -303,7 +293,7 @@ class FacetList<T extends FacetAttribute<any>> extends FacetAttribute<
 
 class FacetMap<
   T extends Record<string, BaseFacetAttribute<any>>,
-> extends FacetAttribute<AddQuestionMarks<{ [K in keyof T]: T[K]["_type"] }>> {
+> extends FacetAttribute<never> {
   private attributes: T;
 
   constructor(attributes: T) {
@@ -430,6 +420,20 @@ class FacetBinarySet extends FacetAttribute<Set<Uint8Array>> {
   }
 }
 
+class FacetDate extends FacetAttribute<Date> {
+  serialize(input: unknown) {
+    if (!(input instanceof Date)) throw new TypeError();
+    return { S: input.toISOString() };
+  }
+
+  deserialize(av: AttributeValue) {
+    if (av.S === undefined) throw new TypeError();
+    const date = new Date(av.S);
+    if (isNaN(date.getTime())) throw new TypeError();
+    return date;
+  }
+}
+
 export const f = {
   // Scalar types
   string: () => new FacetString(),
@@ -447,4 +451,7 @@ export const f = {
   stringSet: () => new FacetStringSet(),
   numberSet: () => new FacetNumberSet(),
   binarySet: () => new FacetBinarySet(),
+
+  // Helper types
+  date: () => new FacetDate(),
 };

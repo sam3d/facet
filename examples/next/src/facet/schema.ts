@@ -7,67 +7,43 @@ const table = createTable({
   name: "Facet",
 });
 
-export const organizations = table.entity({
-  name: "organization",
-
-  attributes: {
-    id: f.string().default(generateId).readOnly(),
-    name: f.string(),
-
-    createdAt: f.string().default(() => new Date().toISOString()),
-
-    organization: f
-      .map({
-        id: f.string().readOnly(),
-        name: f.string().optional(),
-      })
-      .readOnly(),
-  },
-
-  primaryKey: {
-    needs: { id: true, organization: { id: true } },
-    compute(org) {
-      return { PK: "", SK: "" };
-    },
-  },
-});
-
 export const users = table.entity({
   name: "user",
 
   attributes: {
     id: f.string().default(generateId).readOnly(),
-    name: f.string(),
+    name: f.string().optional(),
     email: f.string(),
-    organizationId: f.string().optional(),
 
-    deeply: f
+    organization: f
       .map({
-        nested: f.map({
-          list: f.stringSet().list().optional(),
-        }),
+        id: f.string().readOnly(),
+        name: f.string(),
+        status: f
+          .map({
+            isAdmin: f.boolean().default(false),
+            scopes: f.stringSet().optional(),
+          })
+          .default({}),
       })
-      .optional(),
+      .readOnly(),
 
-    createdAt: f.string().default(() => new Date().toISOString()),
+    createdAt: f.date().default(() => new Date()),
   },
 
   primaryKey: {
-    needs: { id: true },
-    compute(user) {
-      return { PK: "", SK: "" };
-    },
+    needs: { id: true, organization: { id: true } },
+    compute: (user) => {},
   },
 });
 
 (async () => {
-  const user = users.serialize({
-    id: await generateId(),
-    name: "Test User",
+  users.create({
     email: "test.user@gmail.com",
-    deeply: { nested: { list: [new Set(["test"])] } },
-    createdAt: new Date().toISOString(),
-  });
 
-  console.log(JSON.stringify(user, null, 4), users.deserialize(user));
+    organization: {
+      id: "1234",
+      name: "Test User",
+    },
+  });
 })();
