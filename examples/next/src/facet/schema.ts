@@ -19,12 +19,6 @@ export const users = table.entity({
       .map({
         id: f.string().readOnly(),
         name: f.string(),
-        status: f
-          .map({
-            isAdmin: f.boolean().default(false),
-            scopes: f.stringSet().optional(),
-          })
-          .default({}),
       })
       .readOnly(),
 
@@ -33,12 +27,12 @@ export const users = table.entity({
 
   primaryKey: {
     needs: { id: true, organization: { id: true } },
-    compute: (user) => {},
+    compute: (user) => ({ PK: "", SK: "" }),
   },
 });
 
 (async () => {
-  users.create({
+  const res = await users.create({
     email: "test.user@gmail.com",
 
     organization: {
