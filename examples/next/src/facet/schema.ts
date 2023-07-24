@@ -23,7 +23,7 @@ export const users = table.entity({
   attributes: {
     id: f.string().default(generateId).readOnly(),
     name: f.string().optional(),
-    email: f.string(),
+    email: f.string().optional(),
 
     organization: f
       .map({
@@ -36,12 +36,26 @@ export const users = table.entity({
   },
 
   primaryKey: {
-    needs: { id: true },
-    compute({ id }) {
+    needs: { id: true, organization: { id: true } },
+    compute(user) {
       return {
-        PK: compose("user", { id }),
+        PK: compose("user", { id: user.id }),
         SK: compose("user"),
       };
+    },
+  },
+
+  globalSecondaryIndexes: {
+    GSI1: {
+      needs: { email: true },
+      compute(user) {
+        if (!user.email) return;
+
+        return {
+          PK: compose("user", { email: user.email.toLowerCase() }),
+          SK: "test",
+        };
+      },
     },
   },
 });

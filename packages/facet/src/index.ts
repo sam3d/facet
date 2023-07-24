@@ -22,25 +22,42 @@ const client = new DynamoDB({
  * // TODO: Consider marking read-only properties in maps using the `readonly`
  * keyword (similar to adding question marks to `undefined`).
  */
-type ReadOnlyPick<T extends Record<string, BaseFacetAttribute<any>>> = {
-  [K in keyof T as T[K] extends FacetAttributeWithProps<any, infer P>
-    ? P["readOnly"] extends true
-      ? K
-      : never
-    : never]?: UnwrapProps<T[K]> extends FacetMap<infer U>
-    ? ReadOnlyPick<U>
+type AttributeMask<T extends Record<string, BaseFacetAttribute<any>>> = {
+  [K in keyof T]?: UnwrapProps<T[K]> extends FacetMap<infer U>
+    ? AttributeMask<U>
     : true;
 };
+
+type AttributePick<
+  T extends Record<string, BaseFacetAttribute<any>>,
+  U extends AttributeMask<T>,
+> = AddQuestionMarks<{
+  [K in keyof T & keyof U]: U[K] extends object
+    ? UnwrapProps<T[K]> extends FacetMap<infer M>
+      ? AttributePick<M, U[K]>
+      : never
+    : T[K]["_output"];
+}>;
 
 type UnwrapProps<T extends BaseFacetAttribute<any>> =
   T extends FacetAttributeWithProps<infer U, any> ? U : T;
 
-type EntityPrimaryKey<T extends Record<string, BaseFacetAttribute<any>>> = {
-  needs: ReadOnlyPick<T>;
-  compute: (entity: AddQuestionMarks<{ [K in keyof T]: T[K]["_output"] }>) => {
-    PK: string;
-    SK: string;
-  };
+type EntityPrimaryKey<
+  T extends Record<string, BaseFacetAttribute<any>>,
+  U extends AttributeMask<T>,
+> = {
+  needs: U;
+  compute: (entity: AttributePick<T, U>) => { PK: string; SK: string };
+};
+
+type EntitySecondaryIndex<
+  T extends Record<string, BaseFacetAttribute<any>>,
+  U extends AttributeMask<T>,
+> = {
+  needs: U;
+  compute: (
+    entity: AttributePick<T, U>,
+  ) => { PK: string; SK: string } | null | undefined;
 };
 
 type RequiredKeys<T extends object> = {
@@ -62,10 +79,13 @@ class Table {
   entity<
     Name extends string,
     T extends Record<string, BaseFacetAttribute<any>>,
+    U extends AttributeMask<T>,
+    V extends Record<string, AttributeMask<T>>,
   >(opts: {
     name: Name;
     attributes: T;
-    primaryKey: EntityPrimaryKey<T>;
+    primaryKey: EntityPrimaryKey<T, U>;
+    globalSecondaryIndexes: { [K in keyof V]: EntitySecondaryIndex<T, V[K]> };
   }): Entity<Name, T> {
     return new Entity(opts.name, opts.attributes, this);
   }
