@@ -210,6 +210,10 @@ abstract class FacetAttribute<
     return new FacetList(this);
   }
 
+  literal<T extends TOutput>(value: T): FacetLiteral<this, T> {
+    return new FacetLiteral(this, value);
+  }
+
   optional(): FacetAttributeWithProps<
     this,
     { required: false; readOnly: false; default: false }
@@ -247,6 +251,28 @@ abstract class FacetAttribute<
       },
       value,
     );
+  }
+}
+
+class FacetLiteral<
+  T extends FacetAttribute<any>,
+  U extends T["_output"],
+> extends FacetAttribute<U> {
+  private attribute: T;
+  private value: U;
+
+  constructor(attribute: T, value: U) {
+    super();
+    this.attribute = attribute;
+    this.value = value;
+  }
+
+  serialize(input: unknown) {
+    // TODO: Serialize both and compare the results
+    return this.attribute.serialize(input);
+  }
+  deserialize(av: AttributeValue) {
+    return this.attribute.deserialize(av);
   }
 }
 
