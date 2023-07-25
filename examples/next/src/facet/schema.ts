@@ -29,6 +29,12 @@ export const users = table.entity({
       .map({
         id: f.string().readOnly(),
         name: f.string(),
+        other: f
+          .union([
+            f.map({ type: f.string().literal("user"), id: f.string() }),
+            f.map({ type: f.string().literal("player"), age: f.number() }),
+          ])
+          .default(() => ({ type: "user", id: "2" })),
       })
       .readOnly(),
 

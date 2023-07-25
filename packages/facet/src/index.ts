@@ -492,24 +492,51 @@ class FacetDate extends FacetAttribute<Date> {
   }
 }
 
+class FacetUnion<T extends FacetAttribute<any>[]> extends FacetAttribute<
+  T[number]["_output"],
+  T[number]["_input"]
+> {
+  private attributes: T;
+
+  constructor(attributes: [...T]) {
+    super();
+    this.attributes = attributes;
+  }
+
+  serialize(input: unknown) {
+    // TODO: Implement
+    return {} as any;
+  }
+
+  deserialize(av: any) {
+    // TODO: Implement
+    return {} as any;
+  }
+}
+
 export const f = {
   // Scalar types
-  string: () => new FacetString(),
-  number: () => new FacetNumber(),
-  binary: () => new FacetBinary(),
-  boolean: () => new FacetBoolean(),
+  string: (): FacetString => new FacetString(),
+  number: (): FacetNumber => new FacetNumber(),
+  binary: (): FacetBinary => new FacetBinary(),
+  boolean: (): FacetBoolean => new FacetBoolean(),
 
   // Document types
-  list: <T extends FacetAttribute<any>>(attribute: T) =>
+  list: <T extends FacetAttribute<any>>(attribute: T): FacetList<T> =>
     new FacetList(attribute),
-  map: <T extends Record<string, BaseFacetAttribute<any>>>(attributes: T) =>
-    new FacetMap(attributes),
+  map: <T extends Record<string, BaseFacetAttribute<any>>>(
+    attributes: T,
+  ): FacetMap<T> => new FacetMap(attributes),
 
   // Set types
-  stringSet: () => new FacetStringSet(),
-  numberSet: () => new FacetNumberSet(),
-  binarySet: () => new FacetBinarySet(),
+  stringSet: (): FacetStringSet => new FacetStringSet(),
+  numberSet: (): FacetNumberSet => new FacetNumberSet(),
+  binarySet: (): FacetBinarySet => new FacetBinarySet(),
+
+  // Meta types
+  union: <T extends FacetAttribute<any>[]>(attributes: [...T]): FacetUnion<T> =>
+    new FacetUnion(attributes),
 
   // Helper types
-  date: () => new FacetDate(),
+  date: (): FacetDate => new FacetDate(),
 };
