@@ -1,8 +1,6 @@
 import { createTable, f } from "facet";
 import KSUID from "ksuid";
 
-const generateId = async () => (await KSUID.random()).string;
-
 function compose(prefix: string | string[], params?: Record<string, string>) {
   return (
     "$" +
@@ -21,7 +19,7 @@ export const users = table.entity({
   name: "user",
 
   attributes: {
-    id: f.string().default(generateId).readOnly(),
+    id: f.string().default(KSUID.randomSync().string).readOnly(),
     name: f.string().optional(),
     email: f.string().optional(),
 

@@ -116,7 +116,7 @@ export function createTable(opts: { name: string }): Table {
   return new Table(opts.name);
 }
 
-type DefaultValue<T> = T | (() => T | Promise<T>);
+type DefaultValue<T> = T | (() => T);
 
 type AttributeProps = {
   required: boolean;
