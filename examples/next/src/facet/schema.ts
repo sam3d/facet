@@ -20,11 +20,16 @@ export const users = table.entity({
     type: f.string().literal("user").default("user").readOnly(),
     id: f.string().default(() => KSUID.randomSync().string),
     email: f.string(),
-    organizationId: f.string(),
-    isAdmin: f.boolean().default(false),
-    name: f.string().optional(),
     passwordHash: f.binary().optional(),
-    createdAt: f.date().default(new Date()),
+    name: f.string().optional(),
+    organization: f
+      .map({
+        id: f.string(),
+        isAdmin: f.boolean().default(false),
+        joinedAt: f.date().default(() => new Date()),
+      })
+      .optional(),
+    createdAt: f.date().default(() => new Date()),
     updatedAt: f.date().optional(),
   },
 
@@ -37,6 +42,14 @@ export const users = table.entity({
     GSI1: {
       needs: { email: true },
       compute: (u) => [compose("user", { email: u.email }), compose("user")],
+    },
+
+    GSI2: {
+      needs: { organization: { id: true, isAdmin: true } },
+      compute: ({ organization: org }) => [
+        compose("org", { id: org.id }),
+        compose("user", { isAdmin: org.isAdmin ? "Y" : "N" }),
+      ],
     },
   },
 });
