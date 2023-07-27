@@ -85,7 +85,7 @@ class Table {
     name: Name;
     attributes: T;
     primaryKey: EntityPrimaryKey<T, U>;
-    globalSecondaryIndexes: { [K in keyof V]: EntitySecondaryIndex<T, V[K]> };
+    globalSecondaryIndexes?: { [K in keyof V]: EntitySecondaryIndex<T, V[K]> };
   }): Entity<Name, T> {
     return new Entity(opts.name, opts.attributes, this);
   }

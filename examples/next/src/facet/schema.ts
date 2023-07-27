@@ -17,60 +17,30 @@ const table = createTable({
 
 export const users = table.entity({
   name: "user",
-
   attributes: {
-    id: f.string().default(KSUID.randomSync().string).readOnly(),
+    id: f.string().default(() => KSUID.randomSync().string),
+    email: f.string(),
+    organizationId: f.string(),
+    isAdmin: f.boolean().default(false),
     name: f.string().optional(),
-    email: f.string().optional(),
-
-    organization: f
-      .map({
-        id: f.string().readOnly(),
-        name: f.string(),
-        other: f
-          .union([
-            f.map({ type: f.string().literal("user"), id: f.string() }),
-            f.map({ type: f.string().literal("player"), age: f.number() }),
-          ])
-          .default(() => ({ type: "user", id: "2" })),
-      })
-      .readOnly(),
-
-    createdAt: f.date().default(() => new Date()),
+    passwordHash: f.binary().optional(),
+    createdAt: f.date().default(new Date()),
+    updatedAt: f.date().optional(),
   },
-
   primaryKey: {
-    needs: { id: true, organization: { id: true } },
-    compute(user) {
-      return {
-        PK: compose("user", { id: user.id }),
-        SK: compose("user"),
-      };
-    },
+    needs: { id: true },
+    compute: (user) => ({
+      PK: compose("user", { id: user.id }),
+      SK: compose("user"),
+    }),
   },
-
   globalSecondaryIndexes: {
     GSI1: {
       needs: { email: true },
-      compute(user) {
-        if (!user.email) return;
-
-        return {
-          PK: compose("user", { email: user.email.toLowerCase() }),
-          SK: "test",
-        };
-      },
+      compute: (user) => ({
+        PK: compose("user", { email: user.email }),
+        SK: compose("user"),
+      }),
     },
   },
 });
-
-(async () => {
-  const res = await users.create({
-    email: "test.user@gmail.com",
-
-    organization: {
-      id: "1234",
-      name: "Test User",
-    },
-  });
-})();
