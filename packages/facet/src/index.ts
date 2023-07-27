@@ -28,13 +28,21 @@ type AttributeMask<T extends Record<string, BaseFacetAttribute<any>>> = {
     : true;
 };
 
+// TODO: Pick on the resulting output for everything, instead of treating the
+// map element differently than the rest (and then needing special handling)
 type AttributePick<
   T extends Record<string, BaseFacetAttribute<any>>,
   U extends AttributeMask<T>,
 > = AddQuestionMarks<{
   [K in keyof T & keyof U]: U[K] extends object
     ? UnwrapProps<T[K]> extends FacetMap<infer M>
-      ? AttributePick<M, U[K]>
+      ?
+          | AttributePick<M, U[K]>
+          | (T[K] extends FacetAttributeWithProps<any, infer P>
+              ? P["required"] extends false
+                ? undefined
+                : never
+              : never)
       : never
     : T[K]["_output"];
 }>;
