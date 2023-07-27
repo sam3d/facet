@@ -16,8 +16,8 @@ const table = createTable({
 });
 
 export const users = table.entity({
-  name: "user",
   attributes: {
+    type: f.string().literal("user").default("user").readOnly(),
     id: f.string().default(() => KSUID.randomSync().string),
     email: f.string(),
     organizationId: f.string(),

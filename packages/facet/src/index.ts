@@ -77,30 +77,23 @@ class Table {
   }
 
   entity<
-    Name extends string,
     T extends Record<string, BaseFacetAttribute<any>>,
     U extends AttributeMask<T>,
     V extends Record<string, AttributeMask<T>>,
   >(opts: {
-    name: Name;
     attributes: T;
     primaryKey: EntityPrimaryKey<T, U>;
     globalSecondaryIndexes?: { [K in keyof V]: EntitySecondaryIndex<T, V[K]> };
-  }): Entity<Name, T> {
-    return new Entity(opts.name, opts.attributes, this);
+  }): Entity<T> {
+    return new Entity(opts.attributes, this);
   }
 }
 
-class Entity<
-  Name extends string,
-  T extends Record<string, BaseFacetAttribute<any>>,
-> {
-  private name: Name;
+class Entity<T extends Record<string, BaseFacetAttribute<any>>> {
   private attributes: T;
   private table: Table;
 
-  constructor(name: Name, attributes: T, table: Table) {
-    this.name = name;
+  constructor(attributes: T, table: Table) {
     this.attributes = attributes;
     this.table = table;
   }
