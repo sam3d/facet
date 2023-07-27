@@ -27,20 +27,16 @@ export const users = table.entity({
     createdAt: f.date().default(new Date()),
     updatedAt: f.date().optional(),
   },
+
   primaryKey: {
     needs: { id: true },
-    compute: (user) => ({
-      PK: compose("user", { id: user.id }),
-      SK: compose("user"),
-    }),
+    compute: (u) => [compose("user", { id: u.id }), compose("user")],
   },
+
   globalSecondaryIndexes: {
     GSI1: {
       needs: { email: true },
-      compute: (user) => ({
-        PK: compose("user", { email: user.email }),
-        SK: compose("user"),
-      }),
+      compute: (u) => [compose("user", { email: u.email }), compose("user")],
     },
   },
 });

@@ -47,7 +47,7 @@ type EntityPrimaryKey<
   U extends AttributeMask<T>,
 > = {
   needs: U;
-  compute: (entity: AttributePick<T, U>) => { PK: string; SK: string };
+  compute: (entity: AttributePick<T, U>) => [string, string?];
 };
 
 type EntitySecondaryIndex<
@@ -57,7 +57,7 @@ type EntitySecondaryIndex<
   needs: U;
   compute: (
     entity: AttributePick<T, U>,
-  ) => { PK: string; SK: string } | null | undefined;
+  ) => [string, string?] | null | undefined;
 };
 
 type RequiredKeys<T extends object> = {
