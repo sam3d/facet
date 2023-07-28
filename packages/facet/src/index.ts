@@ -22,42 +22,49 @@ const client = new DynamoDB({
  * // TODO: Consider marking read-only properties in maps using the `readonly`
  * keyword (similar to adding question marks to `undefined`).
  */
-type AttributeMask<T extends object> = {
-  [K in keyof T]?: NonNullable<T[K]> extends object
-    ? AttributeMask<T[K]>
+type AttributeMask<T extends Record<string, BaseFacetAttribute<any>>> = {
+  [K in keyof T]?: UnwrapProps<T[K]> extends FacetMap<infer U>
+    ? AttributeMask<U>
     : true;
 };
 
+// TODO: Pick on the resulting output for everything, instead of treating the
+// map element differently than the rest (and then needing special handling)
 type AttributePick<
-  T extends object,
+  T extends Record<string, BaseFacetAttribute<any>>,
   U extends AttributeMask<T>,
 > = AddQuestionMarks<{
-  [K in keyof U]: K extends keyof T
-    ?
-        | Exclude<T[K], object>
-        | (NonNullable<T[K]> extends object
-            ? AttributePick<NonNullable<T[K]>, U[K]>
-            : NonNullable<T[K]>)
-    : never;
+  [K in keyof T & keyof U]: U[K] extends object
+    ? UnwrapProps<T[K]> extends FacetMap<infer M>
+      ?
+          | AttributePick<M, U[K]>
+          | (T[K] extends FacetAttributeWithProps<any, infer P>
+              ? P["required"] extends false
+                ? undefined
+                : never
+              : never)
+      : never
+    : T[K]["_output"];
 }>;
+
+type UnwrapProps<T extends BaseFacetAttribute<any>> =
+  T extends FacetAttributeWithProps<infer U, any> ? U : T;
 
 type EntityPrimaryKey<
   T extends Record<string, BaseFacetAttribute<any>>,
-  U extends AttributeMask<{ [K in keyof T]: T[K]["_output"] }>,
+  U extends AttributeMask<T>,
 > = {
   needs: U;
-  compute: (
-    entity: AttributePick<{ [K in keyof T]: T[K]["_output"] }, U>,
-  ) => [string, string?];
+  compute: (entity: AttributePick<T, U>) => [string, string?];
 };
 
 type EntitySecondaryIndex<
   T extends Record<string, BaseFacetAttribute<any>>,
-  U extends AttributeMask<{ [K in keyof T]: T[K]["_output"] }>,
+  U extends AttributeMask<T>,
 > = {
   needs: U;
   compute: (
-    entity: AttributePick<{ [K in keyof T]: T[K]["_output"] }, U>,
+    entity: AttributePick<T, U>,
   ) => [string, string?] | null | undefined;
 };
 
@@ -79,11 +86,8 @@ class Table {
 
   entity<
     T extends Record<string, BaseFacetAttribute<any>>,
-    U extends AttributeMask<{ [K in keyof T]: T[K]["_output"] }>,
-    V extends Record<
-      string,
-      AttributeMask<{ [K in keyof T]: T[K]["_output"] }>
-    >,
+    U extends AttributeMask<T>,
+    V extends Record<string, AttributeMask<T>>,
   >(opts: {
     attributes: T;
     primaryKey: EntityPrimaryKey<T, U>;
