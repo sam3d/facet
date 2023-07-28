@@ -46,10 +46,10 @@ export const users = table.entity({
 
     GSI2: {
       needs: { organization: { id: true, isAdmin: true } },
-      compute: ({ organization: org }) =>
-        org && [
-          compose("org", { id: org.id }),
-          compose("user", { isAdmin: org.isAdmin ? "Y" : "N" }),
+      compute: (user) =>
+        user.organization && [
+          compose("org", { id: user.organization.id }),
+          compose("user", { isAdmin: user.organization.isAdmin ? "Y" : "N" }),
         ],
     },
   },
