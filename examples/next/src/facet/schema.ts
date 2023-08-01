@@ -15,9 +15,15 @@ const table = createTable({
   name: "Facet",
 });
 
+export const organizations = table.entity({
+  attributes: {
+    type: f.tag("organization"),
+  },
+});
+
 export const users = table.entity({
   attributes: {
-    type: f.string().literal("user").default("user").readOnly(),
+    type: f.tag("user"),
     id: f.string().default(() => KSUID.randomSync().string),
     email: f.string(),
     passwordHash: f.binary().optional(),
@@ -31,26 +37,5 @@ export const users = table.entity({
       .optional(),
     createdAt: f.date().default(() => new Date()),
     updatedAt: f.date().optional(),
-  },
-
-  primaryKey: {
-    needs: { id: true },
-    compute: (u) => [compose("user", { id: u.id }), compose("user")],
-  },
-
-  globalSecondaryIndexes: {
-    GSI1: {
-      needs: { email: true },
-      compute: (u) => [compose("user", { email: u.email }), compose("user")],
-    },
-
-    GSI2: {
-      needs: { organization: { id: true, isAdmin: true } },
-      compute: (user) =>
-        user.organization && [
-          compose("org", { id: user.organization.id }),
-          compose("user", { isAdmin: user.organization.isAdmin ? "Y" : "N" }),
-        ],
-    },
   },
 });

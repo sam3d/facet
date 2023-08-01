@@ -8,63 +8,14 @@ const client = new DynamoDB({
   },
 });
 
-/**
- * A map is the only kind of attribute that can also contain other attributes
- * that are read-only (i.e. a FacetAttributeWithProps). Read-only maps (which
- * cannot be reassigned) are the only type to have interior mutability (i.e.
- * organization ID is immutable, but the name is mutable).
- *
- * For primary key selection, you cannot select a whole read-only map attribute
- * as a dependency. Otherwise, internal mutable properties may change (as
- * above). Instead, maps must be recursed into for another read-only property to
- * select. This is also how read-only properties behave in typescript.
- *
- * // TODO: Consider marking read-only properties in maps using the `readonly`
- * keyword (similar to adding question marks to `undefined`).
- */
 type AttributeMask<T extends Record<string, BaseFacetAttribute<any>>> = {
   [K in keyof T]?: UnwrapProps<T[K]> extends FacetMap<infer U>
     ? AttributeMask<U>
     : true;
 };
 
-type AttributePick<
-  T extends Record<string, BaseFacetAttribute<any>>,
-  U extends AttributeMask<T>,
-> = AddQuestionMarks<{
-  [K in keyof U]: K extends keyof T
-    ? UnwrapProps<T[K]> extends FacetMap<infer M>
-      ?
-          | AttributePick<M, NonNullable<U[K]>>
-          | (T[K] extends FacetAttributeWithProps<any, infer P>
-              ? P["required"] extends false
-                ? undefined
-                : never
-              : never)
-      : T[K]["_output"]
-    : never;
-}>;
-
 type UnwrapProps<T extends BaseFacetAttribute<any>> =
   T extends FacetAttributeWithProps<infer U, any> ? U : T;
-
-type EntityPrimaryKey<
-  T extends Record<string, BaseFacetAttribute<any>>,
-  U extends AttributeMask<T>,
-> = {
-  needs: U;
-  compute: (entity: AttributePick<T, U>) => [string, string?];
-};
-
-type EntitySecondaryIndex<
-  T extends Record<string, BaseFacetAttribute<any>>,
-  U extends AttributeMask<T>,
-> = {
-  needs: U;
-  compute: (
-    entity: AttributePick<T, U>,
-  ) => [string, string?] | null | undefined;
-};
 
 type RequiredKeys<T extends object> = {
   [K in keyof T]: undefined extends T[K] ? never : K;
@@ -82,14 +33,8 @@ class Table {
     this.name = name;
   }
 
-  entity<
-    T extends Record<string, BaseFacetAttribute<any>>,
-    U extends AttributeMask<T>,
-    V extends Record<string, AttributeMask<T>>,
-  >(opts: {
+  entity<T extends Record<string, BaseFacetAttribute<any>>>(opts: {
     attributes: T;
-    primaryKey: EntityPrimaryKey<T, U>;
-    globalSecondaryIndexes?: { [K in keyof V]: EntitySecondaryIndex<T, V[K]> };
   }): Entity<T> {
     return new Entity(opts.attributes, this);
   }
@@ -102,12 +47,6 @@ class Entity<T extends Record<string, BaseFacetAttribute<any>>> {
   constructor(attributes: T, table: Table) {
     this.attributes = attributes;
     this.table = table;
-  }
-
-  async create(
-    input: AddQuestionMarks<{ [K in keyof T]: T[K]["_input"] }>,
-  ): Promise<AddQuestionMarks<{ [K in keyof T]: T[K]["_output"] }>> {
-    return {} as any;
   }
 }
 
@@ -538,4 +477,12 @@ export const f = {
 
   // Helper types
   date: (): FacetDate => new FacetDate(),
+
+  // Helper methods
+  tag: <T extends string>(
+    name: T,
+  ): FacetAttributeWithProps<
+    FacetLiteral<FacetString, T>,
+    { required: true; readOnly: true; default: true }
+  > => new FacetString().literal(name).default(name).readOnly(),
 };
