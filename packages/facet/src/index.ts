@@ -452,6 +452,28 @@ class FacetUnion<T extends FacetAttribute<any>[]> extends FacetAttribute<
   }
 }
 
+class FacetRecord<T extends FacetAttribute<any>> extends FacetAttribute<
+  Record<string, T["_output"]>,
+  Record<string, T["_input"]>
+> {
+  private attribute: T;
+
+  constructor(attribute: T) {
+    super();
+    this.attribute = attribute;
+  }
+
+  serialize(input: unknown) {
+    // TODO: Implement
+    return {} as any;
+  }
+
+  deserialize(av: AttributeValue) {
+    // TODO: Implement
+    return {} as any;
+  }
+}
+
 export const f = {
   // Scalar types
   string: (): FacetString => new FacetString(),
@@ -474,6 +496,8 @@ export const f = {
   // Meta types
   union: <T extends FacetAttribute<any>[]>(attributes: [...T]): FacetUnion<T> =>
     new FacetUnion(attributes),
+  record: <T extends FacetAttribute<any>>(attribute: T): FacetRecord<T> =>
+    new FacetRecord(attribute),
 
   // Helper types
   date: (): FacetDate => new FacetDate(),
