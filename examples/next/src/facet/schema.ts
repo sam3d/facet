@@ -1,16 +1,6 @@
 import { createTable, f } from "facet";
 import KSUID from "ksuid";
 
-function compose(prefix: string | string[], params?: Record<string, string>) {
-  return (
-    "$" +
-    [
-      ...(Array.isArray(prefix) ? prefix : [prefix]),
-      ...Object.entries(params ?? {}).map((param) => param.join("_")),
-    ].join("#")
-  );
-}
-
 const table = createTable({
   name: "Facet",
 });
@@ -18,6 +8,9 @@ const table = createTable({
 export const organizations = table.entity({
   attributes: {
     type: f.tag("organization"),
+    id: f.string().default(() => KSUID.randomSync().string),
+    isActive: f.boolean().default(true),
+    createdAt: f.date(),
   },
 });
 
@@ -29,12 +22,18 @@ export const users = table.entity({
     passwordHash: f.binary().optional(),
     name: f.string().optional(),
     organization: f
-      .map({
-        id: f.string(),
-        isAdmin: f.boolean().default(false),
-        joinedAt: f.date().default(() => new Date()),
-      })
+      .map({ id: f.string(), isAdmin: f.boolean().default(false) })
       .optional(),
+    createdAt: f.date().default(() => new Date()),
+    updatedAt: f.date().optional(),
+  },
+});
+
+export const sessions = table.entity({
+  attributes: {
+    type: f.tag("session"),
+    userId: f.string(),
+    token: f.string().default(() => KSUID.randomSync().string),
     createdAt: f.date().default(() => new Date()),
     updatedAt: f.date().optional(),
   },
