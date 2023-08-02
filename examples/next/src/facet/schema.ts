@@ -5,16 +5,16 @@ const table = createTable({
   name: "Facet",
 });
 
-export const organizations = table.entity({
+export const organization = table.entity({
   attributes: {
     type: f.tag("organization"),
     id: f.string().default(() => KSUID.randomSync().string),
-    isActive: f.boolean().default(true),
-    createdAt: f.date(),
+    name: f.string(),
+    createdAt: f.date().default(() => new Date()),
   },
 });
 
-export const users = table.entity({
+export const user = table.entity({
   attributes: {
     type: f.tag("user"),
     id: f.string().default(() => KSUID.randomSync().string),
@@ -29,7 +29,7 @@ export const users = table.entity({
   },
 });
 
-export const sessions = table.entity({
+export const session = table.entity({
   attributes: {
     type: f.tag("session"),
     userId: f.string(),

@@ -41,7 +41,7 @@ class Table {
 }
 
 class Entity<T extends Record<string, BaseFacetAttribute<any>>> {
-  private attributes: T;
+  public attributes: T;
   private table: Table;
 
   constructor(attributes: T, table: Table) {
@@ -53,6 +53,31 @@ class Entity<T extends Record<string, BaseFacetAttribute<any>>> {
 export function createTable(opts: { name: string }): Table {
   return new Table(opts.name);
 }
+
+export function createFacetClient<T extends Record<string, Entity<any>>>(opts: {
+  schema: T;
+}): { [K in keyof T]: EntityClient<T[K]> } & {
+  $query(): Promise<{ [K in keyof T]: InferOutput<T[K]> }[keyof T][]>;
+} {
+  return {} as any;
+}
+
+type InferOutput<T extends Entity<Record<string, BaseFacetAttribute<any>>>> =
+  AddQuestionMarks<{
+    [K in keyof T["attributes"]]: T["attributes"][K]["_output"];
+  }>;
+
+type EntityClient<
+  T extends Entity<Record<string, BaseFacetAttribute<any>>>,
+  TInput = AddQuestionMarks<{
+    [K in keyof T["attributes"]]: T["attributes"][K]["_input"];
+  }>,
+  TOutput = InferOutput<T>,
+> = {
+  create(opts: { data: TInput }): Promise<TOutput>;
+  get(opts: { where: Partial<TOutput> }): Promise<TOutput>;
+  delete(opts: { where: Partial<TOutput> }): Promise<TOutput>;
+};
 
 type DefaultValue<T> = T | (() => T);
 
